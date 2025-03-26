@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30, 33%, 98%;
+    --foreground: 20, 14%, 20%;
+    
+    --card: 0, 0%, 100%;
+    --card-foreground: 20, 14%, 20%;
+    
+    --popover: 0, 0%, 100%;
+    --popover-foreground: 20, 14%, 20%;
+    
+    --primary: 9, 21%, 70%;
+    --primary-foreground: 0, 0%, 100%;
+    
+    --secondary: 0, 21%, 74%;
+    --secondary-foreground: 0, 0%, 100%;
+    
+    --muted: 0, 0%, 97%;
+    --muted-foreground: 0, 0%, 45%;
+    
+    --accent: 9, 21%, 75%;
+    --accent-foreground: 0, 0%, 20%;
+    
+    --destructive: 0, 85%, 60%;
+    --destructive-foreground: 0, 0%, 98%;
+    
+    --border: 20, 5%, 90%;
+    --input: 20, 5%, 90%;
+    --ring: 10, 20%, 65%;
+    
+    --radius: 0.5rem;
+  }
+  
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-cream text-darkText font-nunito;
+  }
+}
+
+.font-cormorant {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.font-nunito {
+  font-family: 'Nunito Sans', sans-serif;
+}
+
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+
+@layer utilities {
+  .bg-cream {
+    background-color: #f8f3ee;
+  }
+  
+  .bg-roseLight {
+    background-color: #d3b5a6;
+  }
+  
+  .bg-roseDark {
+    background-color: #bc8f8f;
+  }
+  
+  .text-roseDark {
+    color: #bc8f8f;
+  }
+  
+  .text-roseLight {
+    color: #d3b5a6;
+  }
+  
+  .text-darkText {
+    color: #333333;
+  }
+  
+  .border-roseLight {
+    border-color: #d3b5a6;
+  }
+  
+  .border-roseDark {
+    border-color: #bc8f8f;
+  }
+  
+  .newsletter-gradient {
+    background: linear-gradient(135deg, #f8f3ee 0%, #d3b5a6 100%);
+  }
+  
+  .header-scroll {
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+}
