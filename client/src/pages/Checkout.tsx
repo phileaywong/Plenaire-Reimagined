@@ -23,8 +23,14 @@ import { CartItem, Product, Address } from '@/lib/types';
 
 // Address selection schema
 const checkoutSchema = z.object({
-  shippingAddressId: z.string().min(1, { message: 'Please select a shipping address' }),
-  billingAddressId: z.string().min(1, { message: 'Please select a billing address' }),
+  shippingAddressId: z.union([
+    z.string().min(1, { message: 'Please select a shipping address' }),
+    z.number().positive()
+  ]),
+  billingAddressId: z.union([
+    z.string().min(1, { message: 'Please select a billing address' }),
+    z.number().positive()
+  ]),
   notes: z.string().optional(),
 });
 
@@ -82,8 +88,8 @@ export default function Checkout() {
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      shippingAddressId: '',
-      billingAddressId: '',
+      shippingAddressId: '', // Will be coerced to number on submission
+      billingAddressId: '', // Will be coerced to number on submission
       notes: '',
     },
   });
@@ -102,15 +108,25 @@ export default function Checkout() {
   // Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: async (data: CheckoutFormValues) => {
+      // Convert to correct type for API
+      const shippingId = typeof data.shippingAddressId === 'string' 
+        ? parseInt(data.shippingAddressId) 
+        : data.shippingAddressId;
+      
+      const billingId = typeof data.billingAddressId === 'string' 
+        ? parseInt(data.billingAddressId) 
+        : data.billingAddressId;
+        
       const response = await apiRequest('POST', '/api/orders', {
         ...data,
-        shippingAddressId: parseInt(data.shippingAddressId),
-        billingAddressId: parseInt(data.billingAddressId),
+        shippingAddressId: shippingId,
+        billingAddressId: billingId,
       });
       
       // Handle error responses
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Order creation error:', errorData);
         throw new Error(errorData.message || 'Failed to create order');
       }
       
