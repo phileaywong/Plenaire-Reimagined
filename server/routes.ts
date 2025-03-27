@@ -16,7 +16,7 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { authenticate, requireAuth } from "./middleware/auth";
-import { comparePassword } from "./utils/password";
+import { comparePassword, hashPassword } from "./utils/password";
 import Stripe from "stripe";
 import cookieParser from "cookie-parser";
 
@@ -224,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hash new password
-      const hashedPassword = await require('./utils/password').hashPassword(newPassword);
+      const hashedPassword = await hashPassword(newPassword);
       
       // Update password
       const updatedUser = await storage.updateUser(req.user!.id, {
