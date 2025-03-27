@@ -1,7 +1,8 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -30,10 +31,26 @@ import GiftSets from "@/pages/GiftSets";
 import TravelSizes from "@/pages/TravelSizes";
 import Sustainability from "@/pages/Sustainability";
 import Press from "@/pages/Press";
+import AdminPage from "@/pages/admin/AdminPage";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 
 function Router() {
+  const [location] = useLocation();
+  const isAdminRoute = location.startsWith('/admin');
+
+  // If we're on the admin route, don't show Header and Footer
+  if (isAdminRoute) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Switch>
+          <Route path="/admin" component={AdminPage} />
+        </Switch>
+      </div>
+    );
+  }
+
+  // Regular layout for non-admin routes
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -77,8 +94,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
