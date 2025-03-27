@@ -192,7 +192,7 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, c
 export const insertCartSchema = createInsertSchema(carts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true, createdAt: true });
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true, orderId: true, createdAt: true });
 export const insertEnquirySchema = createInsertSchema(enquiries).omit({ id: true, isResolved: true, createdAt: true });
 
 // Types
