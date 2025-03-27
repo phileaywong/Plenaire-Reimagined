@@ -109,6 +109,7 @@ export default function Checkout() {
   const createOrderMutation = useMutation({
     mutationFn: async (data: CheckoutFormValues) => {
       // Convert to correct type for API
+      // Make sure to parse string values to integers
       const shippingId = typeof data.shippingAddressId === 'string' 
         ? parseInt(data.shippingAddressId) 
         : data.shippingAddressId;
@@ -116,11 +117,18 @@ export default function Checkout() {
       const billingId = typeof data.billingAddressId === 'string' 
         ? parseInt(data.billingAddressId) 
         : data.billingAddressId;
+      
+      // Log the data we're sending to help debug
+      console.log("Sending order data:", {
+        shippingAddressId: shippingId,
+        billingAddressId: billingId,
+        notes: data.notes || null // Send null instead of empty string
+      });
         
       const response = await apiRequest('POST', '/api/orders', {
         shippingAddressId: shippingId,
         billingAddressId: billingId,
-        notes: data.notes || ''
+        notes: data.notes || null // Set to null if empty to match schema expectations
       });
       
       // Handle error responses
@@ -181,8 +189,8 @@ export default function Checkout() {
         ...values,
         shippingAddressId: parseInt(values.shippingAddressId as string),
         billingAddressId: parseInt(values.billingAddressId as string),
-        // Ensure notes is never undefined
-        notes: values.notes || ''
+        // Use null for empty notes to match schema expectations
+        notes: values.notes || null
       };
       
       setIsLoading(true);

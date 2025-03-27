@@ -539,11 +539,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create order (checkout)
   app.post("/api/orders", requireAuth, async (req: Request, res: Response) => {
     try {
+      console.log("Order creation request body:", JSON.stringify(req.body));
+      // Extract data from request body
       const { shippingAddressId, billingAddressId, notes } = req.body;
+      console.log("Extracted values:", { shippingAddressId, billingAddressId, notes });
       
       // Validate addresses
-      const shippingAddress = await storage.getAddress(shippingAddressId);
-      const billingAddress = await storage.getAddress(billingAddressId);
+      const shippingId = parseInt(String(shippingAddressId));
+      const billingId = parseInt(String(billingAddressId));
+      console.log("Parsed IDs:", { shippingId, billingId });
+      
+      const shippingAddress = await storage.getAddress(shippingId);
+      const billingAddress = await storage.getAddress(billingId);
       
       if (!shippingAddress || shippingAddress.userId !== req.user!.id) {
         return res.status(400).json({ message: "Invalid shipping address" });
@@ -565,16 +572,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }, 0);
       
       // Create order
-      const orderData = insertOrderSchema.parse({
+      // Build the order data ensuring all fields have proper types
+      const orderData = {
         userId: req.user!.id,
         orderNumber: storage.generateOrderNumber(),
         total,
-        shippingAddressId: parseInt(String(shippingAddressId)),
-        billingAddressId: parseInt(String(billingAddressId)),
+        shippingAddressId: shippingId,
+        billingAddressId: billingId,
         notes: notes || null,
-        status: 'pending',
-        paymentStatus: 'pending'
-      });
+        status: 'pending' as const, // Use 'as const' to correctly type the enum
+        paymentStatus: 'pending' as const // Use 'as const' to correctly type the enum
+      };
+      
+      console.log("Preparing order data:", orderData);
+      
+      // Now parse the data through the schema
+      const validatedOrderData = insertOrderSchema.parse(orderData);
       
       // Create order items
       const orderItemsData = cartItems.map(item => insertOrderItemSchema.parse({
@@ -583,7 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         price: item.product.price
       }));
       
-      const order = await storage.createOrder(orderData, orderItemsData);
+      const order = await storage.createOrder(validatedOrderData, orderItemsData);
       
       // Clear cart
       await storage.clearCart(req.user!.id);
@@ -591,6 +604,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(order);
     } catch (error) {
       if (error instanceof ZodError) {
+        console.error("Zod validation error:", JSON.stringify(error.errors, null, 2));
+        console.error("Failed at:", error.issues.map(issue => issue.path).join(', '));
         res.status(400).json({ message: "Invalid input", errors: error.errors });
       } else {
         console.error("Create order error:", error);
