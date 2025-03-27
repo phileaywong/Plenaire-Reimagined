@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@/lib/types';
@@ -15,28 +15,28 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2 } from 'lucide-react';
 
-// Form validation schemas
+// Profile form schema
 const profileSchema = z.object({
-  firstName: z.string().min(1, { message: 'First name is required' }),
-  lastName: z.string().min(1, { message: 'Last name is required' }),
-  email: z.string().email({ message: 'Invalid email address' }),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Please enter a valid email'),
   phone: z.string().optional(),
 });
 
+// Password change schema
 const passwordSchema = z.object({
-  currentPassword: z.string().min(1, { message: 'Current password is required' }),
-  newPassword: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-  confirmNewPassword: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(8, 'Password must be at least 8 characters'),
+}).refine(data => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
-  path: ['confirmNewPassword'],
+  path: ['confirmPassword'],
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -48,10 +48,8 @@ interface AccountProfileProps {
 
 export default function AccountProfile({ user }: AccountProfileProps) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('profile');
   
-  // Profile form
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -62,61 +60,56 @@ export default function AccountProfile({ user }: AccountProfileProps) {
     },
   });
   
-  // Password form
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
       currentPassword: '',
       newPassword: '',
-      confirmNewPassword: '',
+      confirmPassword: '',
     },
   });
   
-  // Update profile mutation
+  // Profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
-      const res = await apiRequest('PUT', '/api/auth/me', values);
-      return res.json();
+      await apiRequest('PUT', '/api/auth/profile', values);
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+    onSuccess: () => {
       toast({
         title: 'Profile updated',
         description: 'Your profile has been updated successfully.',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: 'There was an error updating your profile. Please try again.',
+        title: 'Update failed',
+        description: error.message || 'Failed to update your profile. Please try again.',
         variant: 'destructive',
       });
     },
   });
   
-  // Update password mutation
+  // Password mutation
   const updatePasswordMutation = useMutation({
     mutationFn: async (values: PasswordFormValues) => {
-      const res = await apiRequest('PUT', '/api/auth/password', values);
-      return res.json();
+      await apiRequest('PUT', '/api/auth/password', values);
     },
     onSuccess: () => {
-      passwordForm.reset();
       toast({
         title: 'Password updated',
         description: 'Your password has been updated successfully.',
       });
+      passwordForm.reset();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: 'There was an error updating your password. Please ensure your current password is correct.',
+        title: 'Update failed',
+        description: error.message || 'Failed to update your password. Please try again.',
         variant: 'destructive',
       });
     },
   });
   
-  // Form submissions
   const onProfileSubmit = (data: ProfileFormValues) => {
     updateProfileMutation.mutate(data);
   };
@@ -126,23 +119,20 @@ export default function AccountProfile({ user }: AccountProfileProps) {
   };
   
   return (
-    <Tabs defaultValue="profile" value={selectedTab} onValueChange={setSelectedTab}>
-      <TabsList className="mb-6">
-        <TabsTrigger value="profile">Personal Information</TabsTrigger>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+      <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsTrigger value="profile">Profile</TabsTrigger>
         <TabsTrigger value="security">Security</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="profile">
+      <TabsContent value="profile" className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Your Profile</CardTitle>
-            <CardDescription>
-              Update your personal information here.
-            </CardDescription>
+            <CardTitle className="text-xl">Profile Information</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...profileForm}>
-              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={profileForm.control}
@@ -180,7 +170,7 @@ export default function AccountProfile({ user }: AccountProfileProps) {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} type="email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -192,7 +182,7 @@ export default function AccountProfile({ user }: AccountProfileProps) {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number (Optional)</FormLabel>
+                      <FormLabel>Phone Number <span className="text-xs text-muted-foreground">(Optional)</span></FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -201,38 +191,26 @@ export default function AccountProfile({ user }: AccountProfileProps) {
                   )}
                 />
                 
-                <div className="flex justify-end pt-4">
-                  <Button 
-                    type="submit"
-                    disabled={updateProfileMutation.isPending}
-                  >
-                    {updateProfileMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Save Changes'
-                    )}
-                  </Button>
-                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full md:w-auto" 
+                  disabled={updateProfileMutation.isPending}>
+                  {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
               </form>
             </Form>
           </CardContent>
         </Card>
       </TabsContent>
       
-      <TabsContent value="security">
+      <TabsContent value="security" className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-            <CardDescription>
-              Update your password to keep your account secure.
-            </CardDescription>
+            <CardTitle className="text-xl">Change Password</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...passwordForm}>
-              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
                 <FormField
                   control={passwordForm.control}
                   name="currentPassword"
@@ -240,14 +218,12 @@ export default function AccountProfile({ user }: AccountProfileProps) {
                     <FormItem>
                       <FormLabel>Current Password</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input {...field} type="password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
-                <Separator />
                 
                 <FormField
                   control={passwordForm.control}
@@ -256,7 +232,7 @@ export default function AccountProfile({ user }: AccountProfileProps) {
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input {...field} type="password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -265,33 +241,24 @@ export default function AccountProfile({ user }: AccountProfileProps) {
                 
                 <FormField
                   control={passwordForm.control}
-                  name="confirmNewPassword"
+                  name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Confirm New Password</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input {...field} type="password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 
-                <div className="flex justify-end pt-4">
-                  <Button 
-                    type="submit"
-                    disabled={updatePasswordMutation.isPending}
-                  >
-                    {updatePasswordMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      'Update Password'
-                    )}
-                  </Button>
-                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full md:w-auto" 
+                  disabled={updatePasswordMutation.isPending}>
+                  {updatePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                </Button>
               </form>
             </Form>
           </CardContent>

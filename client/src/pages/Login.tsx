@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +27,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -49,7 +49,7 @@ export default function Login() {
         description: 'You have successfully logged in.',
       });
       
-      navigate('/');
+      setLocation('/');
     } catch (error: any) {
       toast({
         title: 'Login failed',

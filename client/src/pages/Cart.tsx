@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, Link } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { CartItem, Product } from '@/lib/types';
@@ -12,7 +12,7 @@ import { TrashIcon, MinusIcon, PlusIcon } from 'lucide-react';
 
 export default function Cart() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   // Fetch cart items
@@ -114,7 +114,7 @@ export default function Cart() {
       return;
     }
     
-    navigate('/checkout');
+    setLocation('/checkout');
   };
 
   if (isLoading) {

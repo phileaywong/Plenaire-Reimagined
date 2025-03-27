@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,7 +33,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<RegisterFormValues>({
@@ -58,7 +58,7 @@ export default function Register() {
         description: 'Your account has been created successfully.',
       });
       
-      navigate('/');
+      setLocation('/');
     } catch (error: any) {
       toast({
         title: 'Registration failed',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams, Link, useNavigate } from 'wouter';
+import { useParams, Link, useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
@@ -36,7 +36,7 @@ interface OrderWithItems {
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   
   // Fetch order details
   const { data: order, isLoading, error } = useQuery<OrderWithItems>({
@@ -48,7 +48,7 @@ export default function OrderConfirmation() {
         return data;
       } catch (error) {
         if (error instanceof Response && error.status === 401) {
-          navigate('/login');
+          setLocation('/login');
         }
         throw error;
       }

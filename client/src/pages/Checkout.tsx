@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -53,7 +53,7 @@ function PaymentForm({
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,7 +99,7 @@ function PaymentForm({
 // Checkout Component
 export default function Checkout() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [orderId, setOrderId] = useState<number | null>(null);
@@ -121,7 +121,7 @@ export default function Checkout() {
             description: 'Please log in to continue with checkout.',
             variant: 'destructive',
           });
-          navigate('/login');
+          setLocation('/login');
           return [];
         }
         throw error;
@@ -162,9 +162,9 @@ export default function Checkout() {
         title: 'Cart is empty',
         description: 'Your cart is empty. Please add items before checking out.',
       });
-      navigate('/cart');
+      setLocation('/cart');
     }
-  }, [cartItems, cartLoading, navigate, toast]);
+  }, [cartItems, cartLoading, setLocation, toast]);
 
   // Create order mutation
   const createOrderMutation = useMutation({
@@ -216,7 +216,7 @@ export default function Checkout() {
         description: 'Please add a shipping and billing address to continue.',
         variant: 'destructive',
       });
-      navigate('/account/addresses');
+      setLocation('/account/addresses');
       return;
     }
     
