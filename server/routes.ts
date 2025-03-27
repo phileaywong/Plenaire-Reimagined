@@ -24,7 +24,7 @@ import cookieParser from "cookie-parser";
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2023-10-16",
+    apiVersion: "2023-10-16" as any, // Type assertion to avoid TS error
   });
 } else {
   console.warn("STRIPE_SECRET_KEY not found. Stripe functionality will be disabled.");

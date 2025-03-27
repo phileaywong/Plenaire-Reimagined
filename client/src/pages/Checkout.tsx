@@ -6,32 +6,20 @@ import { useLocation, Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { loadStripe } from '@stripe/stripe-js';
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
 
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CartItem, Product, Address } from '@/lib/types';
-
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // Address selection schema
 const checkoutSchema = z.object({
@@ -42,60 +30,6 @@ const checkoutSchema = z.object({
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
-// Payment Form Component
-function PaymentForm({ 
-  orderId, 
-  clientSecret 
-}: { 
-  orderId: number; 
-  clientSecret: string;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation/${orderId}`,
-      },
-    });
-
-    if (error) {
-      toast({
-        title: 'Payment failed',
-        description: error.message || 'Your payment could not be processed. Please try again.',
-        variant: 'destructive',
-      });
-    }
-
-    setIsLoading(false);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card className="p-4">
-        <PaymentElement />
-      </Card>
-      
-      <Button type="submit" className="w-full" disabled={!stripe || !elements || isLoading}>
-        {isLoading ? 'Processing...' : 'Complete Payment'}
-      </Button>
-    </form>
-  );
-}
-
 // Checkout Component
 export default function Checkout() {
   const { toast } = useToast();
@@ -103,7 +37,6 @@ export default function Checkout() {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [orderId, setOrderId] = useState<number | null>(null);
-  const [clientSecret, setClientSecret] = useState('');
 
   // Fetch cart items
   const { data: cartItems, isLoading: cartLoading } = useQuery<(CartItem & { product: Product })[]>({
@@ -180,8 +113,8 @@ export default function Checkout() {
       queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
       setOrderId(data.id);
       
-      // Create payment intent
-      createPaymentIntent(data.id);
+      // Redirect to payment page
+      redirectToPayment(data.id);
     },
     onError: () => {
       toast({
@@ -193,16 +126,15 @@ export default function Checkout() {
     }
   });
 
-  // Create payment intent
-  const createPaymentIntent = async (orderId: number) => {
+  // Redirect to payment page
+  const redirectToPayment = (orderId: number) => {
     try {
-      const response = await apiRequest('POST', '/api/create-payment-intent', { orderId });
-      const data = await response.json();
-      setClientSecret(data.clientSecret);
+      setIsLoading(false);
+      setLocation(`/payment/${orderId}`);
     } catch (error) {
       toast({
-        title: 'Payment setup failed',
-        description: 'There was an error setting up payment. Please try again.',
+        title: 'Checkout error',
+        description: 'There was an error processing your order. Please try again later.',
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -234,19 +166,6 @@ export default function Checkout() {
     return (
       <div className="container py-10 flex justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"/>
-      </div>
-    );
-  }
-
-  // Show payment form if we have a client secret
-  if (clientSecret) {
-    return (
-      <div className="container max-w-3xl py-10">
-        <h1 className="text-3xl font-serif font-light tracking-wide text-center mb-8">Payment</h1>
-        
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <PaymentForm orderId={orderId!} clientSecret={clientSecret} />
-        </Elements>
       </div>
     );
   }

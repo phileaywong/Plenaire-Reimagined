@@ -132,8 +132,8 @@ export default function Cart() {
       {(!cartItems || cartItems.length === 0) ? (
         <div className="text-center py-10">
           <p className="text-muted-foreground mb-6">Your cart is empty</p>
-          <Button asChild>
-            <Link href="/products">Continue Shopping</Link>
+          <Button onClick={() => setLocation("/products")}>
+            Continue Shopping
           </Button>
         </div>
       ) : (
@@ -200,8 +200,11 @@ export default function Cart() {
                 Clear Cart
               </Button>
               
-              <Button asChild variant="outline">
-                <Link href="/products">Continue Shopping</Link>
+              <Button 
+                variant="outline" 
+                onClick={() => setLocation("/products")}
+              >
+                Continue Shopping
               </Button>
             </div>
           </div>

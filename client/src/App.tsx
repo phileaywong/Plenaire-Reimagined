@@ -9,6 +9,7 @@ import Register from "@/pages/Register";
 import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
+import PaymentPage from "@/pages/PaymentPage";
 import OrderConfirmation from "@/pages/OrderConfirmation";
 import Account from "@/pages/Account";
 import Header from "./components/Header";
@@ -26,6 +27,7 @@ function Router() {
           <Route path="/products/:id" component={ProductDetail} />
           <Route path="/cart" component={Cart} />
           <Route path="/checkout" component={Checkout} />
+          <Route path="/payment/:id" component={PaymentPage} />
           <Route path="/order-confirmation/:orderId" component={OrderConfirmation} />
           <Route path="/account" component={Account} />
           <Route component={NotFound} />
