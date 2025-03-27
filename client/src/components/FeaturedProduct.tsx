@@ -1,11 +1,50 @@
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { Product } from "@/lib/types";
 
 export default function FeaturedProduct() {
   const { data: featuredProduct, isLoading } = useQuery<Product>({
     queryKey: ["/api/products/featured"],
+  });
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: async (productId: number) => {
+      return apiRequest("POST", "/api/cart/items", {
+        productId,
+        quantity: 1,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      toast({
+        title: "Added to cart",
+        description: "Product has been added to your cart",
+      });
+    },
+    onError: (error) => {
+      if (error instanceof Error && error.message.includes("401")) {
+        toast({
+          title: "Please login first",
+          description: "You need to be logged in to add items to cart",
+          variant: "destructive",
+        });
+        setLocation("/login");
+      } else {
+        toast({
+          title: "Failed to add product",
+          description: "There was an error adding this product to your cart",
+          variant: "destructive",
+        });
+      }
+    }
   });
 
   if (isLoading || !featuredProduct) {
@@ -27,6 +66,14 @@ export default function FeaturedProduct() {
       </section>
     );
   }
+
+  const handleAddToCart = () => {
+    addToCartMutation.mutate(featuredProduct.id);
+  };
+
+  const handleLearnMore = () => {
+    setLocation(`/products/${featuredProduct.id}`);
+  };
 
   return (
     <section className="py-16 md:py-24 px-6 md:px-10 bg-white">
@@ -78,10 +125,17 @@ export default function FeaturedProduct() {
                 </span>
               </div>
             </div>
-            <button className="bg-roseDark text-white font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-roseLight transition-colors duration-300 mr-4">
-              Add to Cart
+            <button 
+              onClick={handleAddToCart}
+              disabled={addToCartMutation.isPending}
+              className="bg-roseDark text-white font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-roseLight transition-colors duration-300 mr-4 cursor-pointer"
+            >
+              {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
             </button>
-            <button className="border border-darkText text-darkText font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-darkText hover:text-white transition-colors duration-300">
+            <button 
+              onClick={handleLearnMore}
+              className="border border-darkText text-darkText font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-darkText hover:text-white transition-colors duration-300 cursor-pointer"
+            >
               Learn More
             </button>
           </motion.div>

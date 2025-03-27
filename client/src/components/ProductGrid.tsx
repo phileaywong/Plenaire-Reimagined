@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import ProductCard from "./ProductCard";
 import { Product } from "@/lib/types";
@@ -8,6 +8,11 @@ export default function ProductGrid() {
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+  const [, setLocation] = useLocation();
+
+  const handleViewAllProducts = () => {
+    setLocation("/products");
+  };
 
   return (
     <section id="products" className="py-16 md:py-24 px-6 md:px-10">
@@ -26,6 +31,12 @@ export default function ProductGrid() {
             Discover our curated selection of mindful beauty products designed to
             enhance your everyday rituals
           </p>
+          <button 
+            onClick={() => setLocation("/products")}
+            className="mt-6 inline-block bg-roseDark text-white font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-roseLight transition-colors duration-300 cursor-pointer"
+          >
+            Discover Our Products
+          </button>
         </motion.div>
 
         {isLoading ? (
@@ -45,18 +56,19 @@ export default function ProductGrid() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
-            {products.map((product) => (
+            {products.slice(0, 6).map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
 
         <div className="text-center mt-16">
-          <Link href="/#all-products">
-            <a className="inline-block border border-darkText text-darkText font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-darkText hover:text-white transition-colors duration-300">
-              View All Products
-            </a>
-          </Link>
+          <button
+            onClick={handleViewAllProducts}
+            className="inline-block border border-darkText text-darkText font-poppins text-sm uppercase tracking-wider py-3 px-8 rounded-full hover:bg-darkText hover:text-white transition-colors duration-300 cursor-pointer"
+          >
+            View All Products
+          </button>
         </div>
       </div>
     </section>
