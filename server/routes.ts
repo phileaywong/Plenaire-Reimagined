@@ -15,7 +15,7 @@ import {
   insertEnquirySchema
 } from "@shared/schema";
 import { ZodError } from "zod";
-import { authenticate, requireAuth } from "./middleware/auth";
+import { authenticate, requireAuth, requireAdmin } from "./middleware/auth";
 import { comparePassword, hashPassword } from "./utils/password";
 import Stripe from "stripe";
 import cookieParser from "cookie-parser";
@@ -916,6 +916,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to process subscription" });
       }
+    }
+  });
+  
+  // ===================== Admin Routes =====================
+  
+  // Get all users (admin only)
+  app.get("/api/admin/users", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from the response
+      const usersWithoutPasswords = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error("Get all users error:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+  
+  // Get all products (admin only)
+  app.get("/api/admin/products", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const products = await storage.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Get all products error:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+  
+  // Create product (admin only)
+  app.post("/api/admin/products", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const product = await storage.createProduct(req.body);
+      res.status(201).json(product);
+    } catch (error) {
+      console.error("Create product error:", error);
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+  
+  // Update product (admin only)
+  app.put("/api/admin/products/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid product ID" });
+      }
+      
+      const product = await storage.updateProduct(id, req.body);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Update product error:", error);
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+  
+  // Delete product (admin only)
+  app.delete("/api/admin/products/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid product ID" });
+      }
+      
+      await storage.deleteProduct(id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Delete product error:", error);
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+  
+  // Get all categories (admin only)
+  app.get("/api/admin/categories", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const categories = await storage.getAllCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Get all categories error:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+  
+  // Create category (admin only)
+  app.post("/api/admin/categories", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const category = await storage.createCategory(req.body);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Create category error:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+  
+  // Update category (admin only)
+  app.put("/api/admin/categories/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid category ID" });
+      }
+      
+      const category = await storage.updateCategory(id, req.body);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      console.error("Update category error:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+  
+  // Delete category (admin only)
+  app.delete("/api/admin/categories/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid category ID" });
+      }
+      
+      await storage.deleteCategory(id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Delete category error:", error);
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+  
+  // Get all orders (admin only)
+  app.get("/api/admin/orders", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const orders = await storage.getAllOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Get all orders error:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+  
+  // Update order status (admin only)
+  app.put("/api/admin/orders/:id/status", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid order ID" });
+      }
+      
+      const { status } = req.body;
+      if (!status || !["pending", "processing", "shipped", "delivered", "cancelled"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+      
+      const order = await storage.updateOrderStatus(id, status);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      console.error("Update order status error:", error);
+      res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+  
+  // Get all enquiries (admin only)
+  app.get("/api/admin/enquiries", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const enquiries = await storage.getAllEnquiries();
+      res.json(enquiries);
+    } catch (error) {
+      console.error("Get all enquiries error:", error);
+      res.status(500).json({ message: "Failed to fetch enquiries" });
+    }
+  });
+  
+  // Resolve enquiry (admin only)
+  app.put("/api/admin/enquiries/:id/resolve", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid enquiry ID" });
+      }
+      
+      const enquiry = await storage.resolveEnquiry(id);
+      if (!enquiry) {
+        return res.status(404).json({ message: "Enquiry not found" });
+      }
+      
+      res.json(enquiry);
+    } catch (error) {
+      console.error("Resolve enquiry error:", error);
+      res.status(500).json({ message: "Failed to resolve enquiry" });
+    }
+  });
+  
+  // Get all newsletter subscriptions (admin only)
+  app.get("/api/admin/newsletter-subscriptions", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const subscriptions = await storage.getAllNewsletterSubscriptions();
+      res.json(subscriptions);
+    } catch (error) {
+      console.error("Get all newsletter subscriptions error:", error);
+      res.status(500).json({ message: "Failed to fetch newsletter subscriptions" });
+    }
+  });
+  
+  // Get all reviews (admin only)
+  app.get("/api/admin/reviews", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const reviews = await storage.getAllReviews();
+      res.json(reviews);
+    } catch (error) {
+      console.error("Get all reviews error:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
     }
   });
 
