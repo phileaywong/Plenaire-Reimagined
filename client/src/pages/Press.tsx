@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface MediaMention {
 
 export default function Press() {
   const [filter, setFilter] = useState<string>("all");
+  const [, setLocation] = useLocation();
   
   // Mock press releases data
   const pressReleases: PressRelease[] = [
@@ -246,8 +248,19 @@ export default function Press() {
           Download our press kit for brand assets, product images, and company information.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button className="flex-1 max-w-xs mx-auto">Download Press Kit</Button>
-          <Button variant="outline" className="flex-1 max-w-xs mx-auto">View Brand Guidelines</Button>
+          <Button 
+            className="flex-1 max-w-xs mx-auto"
+            onClick={() => setLocation("/download/press-kit")}
+          >
+            Download Press Kit
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1 max-w-xs mx-auto"
+            onClick={() => setLocation("/brand-guidelines")}
+          >
+            View Brand Guidelines
+          </Button>
         </div>
       </section>
       
@@ -264,7 +277,12 @@ export default function Press() {
             <a href="mailto:press@plenaire.com" className="text-primary hover:underline">press@plenaire.com</a><br />
             +1 (555) 123-4567
           </p>
-          <Button variant="outline">Contact Press Team</Button>
+          <Button 
+            variant="outline"
+            onClick={() => setLocation("/contact?subject=Press Inquiry")}
+          >
+            Contact Press Team
+          </Button>
         </div>
       </section>
     </div>

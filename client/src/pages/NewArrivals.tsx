@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@/lib/types";
 import ProductCard from "@/components/ProductCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function NewArrivals() {
+  const [email, setEmail] = useState("");
+  const { toast } = useToast();
+  
   // Get all products
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ['/api/products'],
@@ -95,11 +101,31 @@ export default function NewArrivals() {
           <input 
             type="email" 
             placeholder="Your email address" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="flex-grow py-2 px-4 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
-          <button className="bg-primary text-white py-2 px-6 rounded-md hover:bg-primary/90 transition-colors">
+          <Button 
+            onClick={() => {
+              if (!email || !email.includes('@')) {
+                toast({
+                  title: "Invalid email",
+                  description: "Please enter a valid email address.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              
+              toast({
+                title: "Thank you!",
+                description: "You've been added to our notification list.",
+              });
+              
+              setEmail("");
+            }}
+          >
             Notify Me
-          </button>
+          </Button>
         </div>
       </div>
     </div>

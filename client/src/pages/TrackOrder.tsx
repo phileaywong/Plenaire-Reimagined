@@ -45,10 +45,14 @@ export default function TrackOrder() {
     
     // Simulate API call with timeout
     setTimeout(() => {
-      // Demo: set a random status based on the first digit of the order number
-      const firstDigit = parseInt(values.orderNumber[0]) || 0;
-      const statuses: OrderStatus[] = ["processing", "shipped", "out_for_delivery", "delivered"];
-      setOrderStatus(statuses[firstDigit % 4]);
+      // Instead of selecting random statuses, check for valid orders
+      // For demo purposes, we'll only accept a specific test order number
+      if (values.orderNumber === "PLEN-12345678" && values.email) {
+        setOrderStatus("processing");
+      } else {
+        // For all other inputs, show not found
+        setOrderStatus(null);
+      }
       setIsLoading(false);
     }, 1500);
   };
@@ -149,7 +153,7 @@ export default function TrackOrder() {
                     </div>
                   </div>
                   
-                  {orderStatus && orderStatus !== "not_found" && (
+                  {orderStatus && (
                     <div className="pt-4">
                       <h4 className="font-medium mb-3">Shipping Progress</h4>
                       

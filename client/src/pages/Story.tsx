@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 export default function Story() {
+  const [, setLocation] = useLocation();
   return (
     <div className="container mx-auto px-4 pt-32 pb-20">
       <div className="max-w-4xl mx-auto">
@@ -91,7 +93,11 @@ export default function Story() {
             to care for your skin in a way that feels authentic and effective. Join us as we continue to evolve and 
             innovate in the spirit of open-air freshness that inspired our name.
           </p>
-          <Button size="lg" className="bg-rose-600 hover:bg-rose-700">
+          <Button 
+            size="lg" 
+            className="bg-rose-600 hover:bg-rose-700"
+            onClick={() => setLocation("/products")}
+          >
             Shop Our Products
           </Button>
         </section>

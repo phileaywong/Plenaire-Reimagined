@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQuery, queryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { Product, Category } from "@/lib/types";
 import ProductCard from "@/components/ProductCard";
