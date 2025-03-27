@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -149,6 +149,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { firstName, lastName, email, phone } = req.body;
       
+      console.log("Profile update request:", { firstName, lastName, email, phone });
+      
       // Validate inputs
       if (!firstName || !lastName || !email) {
         return res.status(400).json({ message: "First name, last name, and email are required" });
@@ -162,13 +164,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Update user
+      // Update user with correct field names
       const updatedUser = await storage.updateUser(req.user!.id, {
         firstName,
         lastName,
         email,
         phone
       });
+      
+      console.log("User updated:", updatedUser);
       
       if (!updatedUser) {
         return res.status(500).json({ message: "Failed to update profile" });
@@ -661,8 +665,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Create a raw body middleware specifically for this route
+  const rawBodyMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    if (req.headers['content-type'] === 'application/json') {
+      let data = '';
+      req.setEncoding('utf8');
+      req.on('data', (chunk) => {
+        data += chunk;
+      });
+      req.on('end', () => {
+        (req as any).rawBody = data;
+        next();
+      });
+    } else {
+      next();
+    }
+  };
+
   // Webhook for Stripe events
-  app.post("/api/webhook", async (req: Request, res: Response) => {
+  app.post("/api/webhook", rawBodyMiddleware, async (req: Request, res: Response) => {
     if (!stripe) {
       return res.status(500).json({ message: "Stripe is not configured. Please provide STRIPE_SECRET_KEY." });
     }
@@ -680,12 +701,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let event;
     
     try {
-      // Verify webhook signature
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
+      // Check if we're in development mode and a test flag is provided
+      const isTestMode = process.env.NODE_ENV !== 'production' && req.query.test === 'true';
+      
+      if (isTestMode) {
+        // In test mode, parse the body directly without signature validation
+        event = JSON.parse((req as any).rawBody || JSON.stringify(req.body));
+        console.log("Webhook test mode: bypassing signature verification");
+      } else {
+        // In production mode, verify the signature
+        event = stripe.webhooks.constructEvent(
+          (req as any).rawBody || JSON.stringify(req.body),
+          sig,
+          process.env.STRIPE_WEBHOOK_SECRET
+        );
+      }
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
       return res.status(400).send(`Webhook Error: ${err}`);

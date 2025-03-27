@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -50,6 +50,7 @@ export default function AccountProfile({ user }: AccountProfileProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
   
+  // Create profileForm
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -59,6 +60,19 @@ export default function AccountProfile({ user }: AccountProfileProps) {
       phone: user?.phone || '',
     },
   });
+  
+  // Update form values when user data changes
+  useEffect(() => {
+    if (user) {
+      console.log("Setting form values with user data:", user);
+      profileForm.reset({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user, profileForm]);
   
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -72,15 +86,25 @@ export default function AccountProfile({ user }: AccountProfileProps) {
   // Profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
-      await apiRequest('PUT', '/api/auth/profile', values);
+      console.log("Sending profile update:", values);
+      const response = await apiRequest('PUT', '/api/auth/profile', values);
+      const data = await response.json();
+      console.log("Profile update response:", data);
+      return data;
     },
     onSuccess: () => {
       toast({
         title: 'Profile updated',
         description: 'Your profile has been updated successfully.',
       });
+      
+      // Force a refetch of the user data by invalidating the query cache
+      import('@/lib/queryClient').then(({ queryClient }) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      });
     },
     onError: (error: any) => {
+      console.error("Profile update error:", error);
       toast({
         title: 'Update failed',
         description: error.message || 'Failed to update your profile. Please try again.',
@@ -92,7 +116,11 @@ export default function AccountProfile({ user }: AccountProfileProps) {
   // Password mutation
   const updatePasswordMutation = useMutation({
     mutationFn: async (values: PasswordFormValues) => {
-      await apiRequest('PUT', '/api/auth/password', values);
+      console.log("Sending password update");
+      const response = await apiRequest('PUT', '/api/auth/password', values);
+      const data = await response.json();
+      console.log("Password update response:", data);
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -102,6 +130,7 @@ export default function AccountProfile({ user }: AccountProfileProps) {
       passwordForm.reset();
     },
     onError: (error: any) => {
+      console.error("Password update error:", error);
       toast({
         title: 'Update failed',
         description: error.message || 'Failed to update your password. Please try again.',

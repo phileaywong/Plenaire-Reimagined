@@ -20,13 +20,14 @@ export default function Account() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
   
-  // Fetch user data to ensure they're logged in
-  const { data: user, isLoading, error } = useQuery({
+  // Fetch full user data to ensure they're logged in
+  const { data: user, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/auth/me'],
     queryFn: async () => {
       try {
         const res = await apiRequest('GET', '/api/auth/me');
         const data = await res.json();
+        console.log("Fetched user data:", data);
         return data;
       } catch (error) {
         if (error instanceof Response && error.status === 401) {

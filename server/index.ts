@@ -3,7 +3,19 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
+
+// Special handling for Stripe webhooks
+const stripeWebhookPath = '/api/webhook';
+
+// Parse JSON for all routes except the webhook path
+app.use((req, res, next) => {
+  if (req.path === stripeWebhookPath) {
+    // Skip JSON parsing for webhook route
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
