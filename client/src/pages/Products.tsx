@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Product, Category } from "@/lib/types";
 import ProductCard from "@/components/ProductCard";
@@ -12,24 +12,40 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   
-  // Get all products
-  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
-    queryKey: ['/api/products'],
-  });
-  
   // Get all categories
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
   });
-  
-  // Filter products based on category and search query
-  const filteredProducts = products?.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || product.categoryId.toString() === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
+
+  // Get products based on selected category
+  const { 
+    data: products = [], 
+    isLoading: productsLoading 
+  } = useQuery<Product[]>({
+    queryKey: selectedCategory 
+      ? ['/api/categories', selectedCategory, 'products'] 
+      : ['/api/products'],
+    queryFn: async () => {
+      if (selectedCategory) {
+        const response = await fetch(`/api/categories/${selectedCategory}/products`);
+        if (!response.ok) throw new Error('Failed to fetch products by category');
+        return response.json();
+      } else {
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        return response.json();
+      }
+    },
   });
+  
+  // Filter products based on search query
+  const filteredProducts = searchQuery.trim() === ""
+    ? products
+    : products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              product.description.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch;
+      });
   
   // Handle category selection
   const handleCategorySelect = (categoryId: string | null) => {

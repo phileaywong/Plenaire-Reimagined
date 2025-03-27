@@ -83,28 +83,28 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/products">
+                <Link href="/best-sellers">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Best Sellers
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/products">
+                <Link href="/new-arrivals">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     New Arrivals
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/products">
+                <Link href="/gift-sets">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Gift Sets
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/products">
+                <Link href="/travel-sizes">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Travel Sizes
                   </a>
@@ -133,7 +133,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/our-story">
+                <Link href="/sustainability">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Sustainability
                   </a>
@@ -147,7 +147,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/press">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Press
                   </a>
@@ -169,28 +169,28 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/faqs">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     FAQs
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/shipping-returns">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Shipping & Returns
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/track-order">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Track Your Order
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/privacy-policy">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Privacy Policy
                   </a>

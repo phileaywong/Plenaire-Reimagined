@@ -19,6 +19,16 @@ import Ingredients from "@/pages/Ingredients";
 import Journal from "@/pages/Journal";
 import Contact from "@/pages/Contact";
 import Search from "@/pages/Search";
+import FAQs from "@/pages/FAQs";
+import ShippingReturns from "@/pages/ShippingReturns";
+import TrackOrder from "@/pages/TrackOrder";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import BestSellers from "@/pages/BestSellers";
+import NewArrivals from "@/pages/NewArrivals";
+import GiftSets from "@/pages/GiftSets";
+import TravelSizes from "@/pages/TravelSizes";
+import Sustainability from "@/pages/Sustainability";
+import Press from "@/pages/Press";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 
@@ -44,6 +54,16 @@ function Router() {
           <Route path="/journal" component={Journal} />
           <Route path="/contact-us" component={Contact} />
           <Route path="/search" component={Search} />
+          <Route path="/faqs" component={FAQs} />
+          <Route path="/shipping-returns" component={ShippingReturns} />
+          <Route path="/track-order" component={TrackOrder} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/best-sellers" component={BestSellers} />
+          <Route path="/new-arrivals" component={NewArrivals} />
+          <Route path="/gift-sets" component={GiftSets} />
+          <Route path="/travel-sizes" component={TravelSizes} />
+          <Route path="/sustainability" component={Sustainability} />
+          <Route path="/press" component={Press} />
           <Route component={NotFound} />
         </Switch>
       </main>
