@@ -45,9 +45,14 @@ export default function TrackOrder() {
     
     // Simulate API call with timeout
     setTimeout(() => {
-      // Instead of selecting random statuses, check for valid orders
-      // For demo purposes, we'll only accept a specific test order number
+      // Check for valid orders based on order number and email
       if (values.orderNumber === "PLEN-12345678" && values.email) {
+        setOrderStatus("shipped");
+      } else if (values.orderNumber === "PLEN-87654321" && values.email) {
+        setOrderStatus("out_for_delivery");
+      } else if (values.orderNumber === "PLEN-11223344" && values.email) {
+        setOrderStatus("delivered");
+      } else if (values.orderNumber === "PLEN-55667788" && values.email) {
         setOrderStatus("processing");
       } else {
         // For all other inputs, show not found

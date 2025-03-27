@@ -3,7 +3,7 @@ import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Heart, ShoppingBag } from "lucide-react";
 
 export default function GiftSets() {
@@ -47,22 +47,33 @@ export default function GiftSets() {
   ];
   
   // Function to add a gift set to cart
-  // This would need to be implemented on the backend in a real app
   const addToCart = async (giftSetId: number) => {
     try {
-      // In a real app, this would add the entire gift set
-      // For now, we'll simulate by adding the first product
-      if (products.length > 0) {
-        await apiRequest('POST', '/api/cart/items', {
-          productId: products[0].id,
-          quantity: 1
-        });
-        
-        toast({
-          title: "Gift set added to cart",
-          description: "Your gift set has been added to your cart.",
-        });
+      // Get the gift set based on the ID
+      const giftSet = giftSets.find(set => set.id === giftSetId);
+      
+      if (!giftSet || !giftSet.products.length) {
+        throw new Error('Gift set not found or has no products');
       }
+      
+      // Add each product in the gift set to the cart
+      // We use Promise.all to wait for all requests to complete
+      await Promise.all(
+        giftSet.products.map(product => 
+          apiRequest('POST', '/api/cart/items', {
+            productId: product.id,
+            quantity: 1
+          })
+        )
+      );
+      
+      // Invalidate cart query to refresh the cart state
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      
+      toast({
+        title: `${giftSet.name} added to cart`,
+        description: "Your gift set has been added to your cart.",
+      });
     } catch (error) {
       toast({
         title: "Error",
@@ -75,18 +86,30 @@ export default function GiftSets() {
   // Function to add a gift set to wishlist
   const addToWishlist = async (giftSetId: number) => {
     try {
-      // In a real app, this would add the entire gift set
-      // For now, we'll simulate by adding the first product
-      if (products.length > 0) {
-        await apiRequest('POST', '/api/wishlist', {
-          productId: products[0].id,
-        });
-        
-        toast({
-          title: "Added to wishlist",
-          description: "Gift set has been added to your wishlist.",
-        });
+      // Get the gift set based on the ID
+      const giftSet = giftSets.find(set => set.id === giftSetId);
+      
+      if (!giftSet || !giftSet.products.length) {
+        throw new Error('Gift set not found or has no products');
       }
+
+      // Add each product in the gift set to the wishlist
+      // We use Promise.all to wait for all requests to complete
+      await Promise.all(
+        giftSet.products.map(product => 
+          apiRequest('POST', '/api/wishlist', {
+            productId: product.id,
+          })
+        )
+      );
+      
+      // Invalidate wishlist query to refresh the wishlist state
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
+      
+      toast({
+        title: `${giftSet.name} added to wishlist`,
+        description: "Gift set has been added to your wishlist.",
+      });
     } catch (error) {
       toast({
         title: "Error",

@@ -107,6 +107,13 @@ export default function Checkout() {
         shippingAddressId: parseInt(data.shippingAddressId),
         billingAddressId: parseInt(data.billingAddressId),
       });
+      
+      // Handle error responses
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create order');
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
