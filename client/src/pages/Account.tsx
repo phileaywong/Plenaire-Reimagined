@@ -10,10 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { User, CreditCard, MapPin, Package, Heart, LogOut } from 'lucide-react';
 
-import AccountAddresses from '@/components/account/AccountAddresses';
-import AccountOrders from '@/components/account/AccountOrders';
-import AccountProfile from '@/components/account/AccountProfile';
-import AccountWishlist from '@/components/account/AccountWishlist';
+import AccountAddresses from '../components/account/AccountAddresses';
+import AccountOrders from '../components/account/AccountOrders';
+import AccountProfile from '../components/account/AccountProfile';
+import AccountWishlist from '../components/account/AccountWishlist';
 
 export default function Account() {
   const [, setLocation] = useLocation();

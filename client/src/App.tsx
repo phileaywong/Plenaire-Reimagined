@@ -13,6 +13,7 @@ import PaymentPage from "@/pages/PaymentPage";
 import OrderConfirmation from "@/pages/OrderConfirmation";
 import Account from "@/pages/Account";
 import Shop from "@/pages/Shop";
+import Products from "@/pages/Products";
 import Story from "@/pages/Story";
 import Ingredients from "@/pages/Ingredients";
 import Journal from "@/pages/Journal";
@@ -30,7 +31,8 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
-          <Route path="/products" component={Shop} />
+          <Route path="/products" component={Products} />
+          <Route path="/shop" component={Shop} />
           <Route path="/products/:id" component={ProductDetail} />
           <Route path="/cart" component={Cart} />
           <Route path="/checkout" component={Checkout} />
