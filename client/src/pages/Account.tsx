@@ -73,9 +73,9 @@ export default function Account() {
   
   return (
     <div className="container py-10">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-serif font-light tracking-wide">My Account</h1>
-        <p className="text-muted-foreground mt-2">Manage your profile, orders, and preferences</p>
+      <div className="text-center mb-10">
+        <h1 className="text-4xl font-serif font-light tracking-wider uppercase text-neutral-700">My Account</h1>
+        <p className="text-muted-foreground mt-3 text-sm font-light">Manage your profile, orders, and preferences</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@/lib/types';
@@ -61,18 +61,33 @@ export default function AccountProfile({ user }: AccountProfileProps) {
     },
   });
   
+  // Query to get full user details for profile
+  const { data: fullUserData } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/auth/me');
+      const data = await res.json();
+      console.log("Fetched full user profile:", data);
+      return data;
+    },
+    enabled: !!user,
+  });
+  
   // Update form values when user data changes
   useEffect(() => {
-    if (user) {
-      console.log("Setting form values with user data:", user);
+    // Use the full user data from our query if available
+    const userData = fullUserData || user;
+    
+    if (userData) {
+      console.log("Setting form values with user data:", userData);
       profileForm.reset({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
       });
     }
-  }, [user, profileForm]);
+  }, [user, fullUserData, profileForm]);
   
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -101,6 +116,7 @@ export default function AccountProfile({ user }: AccountProfileProps) {
       // Force a refetch of the user data by invalidating the query cache
       import('@/lib/queryClient').then(({ queryClient }) => {
         queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+        queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       });
     },
     onError: (error: any) => {
