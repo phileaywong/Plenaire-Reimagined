@@ -76,35 +76,35 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/">
+                <Link href="/products">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     All Products
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/products">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Best Sellers
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/products">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     New Arrivals
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/products">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Gift Sets
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/products">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Travel Sizes
                   </a>
@@ -119,28 +119,28 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/#story">
+                <Link href="/our-story">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Our Story
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/#ingredients">
+                <Link href="/ingredients">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Ingredients
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/">
+                <Link href="/our-story">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Sustainability
                   </a>
                 </Link>
               </li>
               <li>
-                <Link href="/#journal">
+                <Link href="/journal">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Journal
                   </a>
@@ -162,7 +162,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/#contact">
+                <Link href="/contact-us">
                   <a className="hover:text-roseDark transition-colors duration-300">
                     Contact Us
                   </a>

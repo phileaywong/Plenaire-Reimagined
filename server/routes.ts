@@ -166,7 +166,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.updateUser(req.user!.id, {
         firstName,
         lastName,
-        email
+        email,
+        phone
       });
       
       if (!updatedUser) {

@@ -26,9 +26,9 @@ export default function Shop() {
   // Categories list for filtering
   const categories = [
     { id: "all", name: "All Products" },
-    { id: "1", name: "Cleansers" },
-    { id: "2", name: "Serums" },
-    { id: "3", name: "Moisturizers" }
+    { id: "2", name: "Cleansers" },
+    { id: "3", name: "Serums" },
+    { id: "4", name: "Moisturizers" }
   ];
   
   return (
