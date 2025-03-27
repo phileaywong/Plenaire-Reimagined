@@ -569,9 +569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.id,
         orderNumber: storage.generateOrderNumber(),
         total,
-        shippingAddressId,
-        billingAddressId,
-        notes,
+        shippingAddressId: parseInt(String(shippingAddressId)),
+        billingAddressId: parseInt(String(billingAddressId)),
+        notes: notes || null,
         status: 'pending',
         paymentStatus: 'pending'
       });

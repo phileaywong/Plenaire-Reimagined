@@ -118,9 +118,9 @@ export default function Checkout() {
         : data.billingAddressId;
         
       const response = await apiRequest('POST', '/api/orders', {
-        ...data,
         shippingAddressId: shippingId,
         billingAddressId: billingId,
+        notes: data.notes || ''
       });
       
       // Handle error responses
@@ -175,8 +175,27 @@ export default function Checkout() {
       return;
     }
     
-    setIsLoading(true);
-    createOrderMutation.mutate(values);
+    try {
+      // Convert string IDs to numbers for API compatibility
+      const payload = {
+        ...values,
+        shippingAddressId: parseInt(values.shippingAddressId as string),
+        billingAddressId: parseInt(values.billingAddressId as string),
+        // Ensure notes is never undefined
+        notes: values.notes || ''
+      };
+      
+      setIsLoading(true);
+      createOrderMutation.mutate(payload);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Checkout error',
+        description: 'There was a problem processing your checkout data. Please try again.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+    }
   }
 
   // Calculate totals
