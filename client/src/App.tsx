@@ -10,6 +10,7 @@ import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import PaymentPage from "@/pages/PaymentPage";
+import StripeCheckout from "@/pages/StripeCheckout";
 import OrderConfirmation from "@/pages/OrderConfirmation";
 import Account from "@/pages/Account";
 import Shop from "@/pages/Shop";
@@ -47,6 +48,7 @@ function Router() {
           <Route path="/cart" component={Cart} />
           <Route path="/checkout" component={Checkout} />
           <Route path="/payment/:id" component={PaymentPage} />
+          <Route path="/stripe-checkout" component={StripeCheckout} />
           <Route path="/order-confirmation/:orderId" component={OrderConfirmation} />
           <Route path="/account" component={Account} />
           <Route path="/our-story" component={Story} />

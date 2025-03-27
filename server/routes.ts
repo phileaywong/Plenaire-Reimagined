@@ -635,44 +635,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment routes with Stripe
   
   // Create payment intent
-  app.post("/api/create-payment-intent", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/create-payment-intent", async (req: Request, res: Response) => {
     try {
       if (!stripe) {
         return res.status(500).json({ message: "Stripe is not configured. Please provide STRIPE_SECRET_KEY." });
       }
       
-      const { orderId } = req.body;
-      
-      // Validate order
-      const order = await storage.getOrderById(parseInt(orderId));
-      if (!order || order.userId !== req.user!.id) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-      
-      // Check if order already has payment intent
-      if (order.stripePaymentIntentId) {
-        const paymentIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
-        return res.json({ clientSecret: paymentIntent.client_secret });
-      }
-      
-      // Create payment intent
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(order.total * 100), // Convert to cents
-        currency: "usd",
-        metadata: {
-          orderId: order.id.toString(),
-          orderNumber: order.orderNumber
+      // Check if request is for an order or direct payment
+      if (req.body.orderId) {
+        // Order-based payment flow (requires authentication)
+        if (!req.user) {
+          return res.status(401).json({ message: "Authentication required for order payments" });
         }
-      });
-      
-      // Update order with payment intent ID
-      await storage.updatePaymentStatus(
-        order.id, 
-        'processing',
-        paymentIntent.id
-      );
-      
-      res.json({ clientSecret: paymentIntent.client_secret });
+        
+        const { orderId } = req.body;
+        
+        // Validate order
+        const order = await storage.getOrderById(parseInt(orderId));
+        if (!order || order.userId !== req.user.id) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+        
+        // Check if order already has payment intent
+        if (order.stripePaymentIntentId) {
+          const paymentIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
+          return res.json({ clientSecret: paymentIntent.client_secret });
+        }
+        
+        // Create payment intent
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(order.total * 100), // Convert to cents
+          currency: "usd",
+          metadata: {
+            orderId: order.id.toString(),
+            orderNumber: order.orderNumber
+          }
+        });
+        
+        // Update order with payment intent ID
+        await storage.updatePaymentStatus(
+          order.id, 
+          'processing',
+          paymentIntent.id
+        );
+        
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } else if (req.body.amount) {
+        // Direct payment flow (standalone payment without an order)
+        const { amount } = req.body;
+        
+        if (typeof amount !== 'number' || amount <= 0) {
+          return res.status(400).json({ message: "Valid amount is required" });
+        }
+        
+        // Create payment intent for direct payment
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(amount * 100), // Convert to cents
+          currency: "usd",
+          metadata: {
+            type: "direct_payment",
+            userId: req.user?.id?.toString() || 'guest'
+          }
+        });
+        
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } else {
+        res.status(400).json({ message: "Either orderId or amount is required" });
+      }
     } catch (error) {
       console.error("Create payment intent error:", error);
       res.status(500).json({ message: "Failed to create payment intent" });
