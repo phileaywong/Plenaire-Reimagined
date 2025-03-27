@@ -1,0 +1,37 @@
+## Key Relationships
+
+### Foreign Key Relationships
+| Table       | Column              | References | Referenced Column |
+|-------------|---------------------|------------|-------------------|
+| addresses   | user_id             | users      | id                |
+| cart_items  | cart_id             | carts      | id                |
+| cart_items  | product_id          | products   | id                |
+| carts       | user_id             | users      | id                |
+| enquiries   | user_id             | users      | id                |
+| order_items | order_id            | orders     | id                |
+| order_items | product_id          | products   | id                |
+| orders      | billing_address_id  | addresses  | id                |
+| orders      | shipping_address_id | addresses  | id                |
+| orders      | user_id             | users      | id                |
+| products    | category_id         | categories | id                |
+| reviews     | product_id          | products   | id                |
+| reviews     | user_id             | users      | id                |
+| sessions    | user_id             | users      | id                |
+| wishlists   | product_id          | products   | id                |
+| wishlists   | user_id             | users      | id                |
+
+### Unique Constraints
+| Table                      | Column       | Index Name                            |
+|----------------------------|--------------|---------------------------------------|
+| newsletter_subscriptions | email        | newsletter_subscriptions_email_unique |
+| orders                     | order_number | orders_order_number_unique            |
+| products                   | sku          | products_sku_unique                   |
+| users                      | email        | users_email_unique                    |
+
+## Implementation Notes
+*   Authentication flow: Uses JWT tokens with session management through PostgreSQL
+*   Stripe Integration: Orders include Stripe payment_intent_id for payment processing
+*   Data Integrity: Foreign key constraints protect referential integrity
+*   Order Processing: Status transitions from pending → processing → shipped → delivered
+
+This schema supports all aspects of the e-commerce platform including user accounts, product catalog, shopping cart, checkout process, order management, and customer engagement features.

@@ -1,0 +1,212 @@
+# Plenaire E-commerce Platform Database Schema
+
+## Enumerations
+
+### 1. user_role
+*   **Values:** user, admin
+*   **Description:** Defines roles for system access control
+
+### 2. order_status
+*   **Values:** pending, processing, shipped, delivered, cancelled
+*   **Description:** Tracks the fulfillment status of customer orders
+
+### 3. payment_status
+*   **Values:** pending, processing, completed, failed, refunded
+*   **Description:** Monitors the payment processing state for orders
+
+## Tables
+
+### 1. users
+| Column     | Data Type | Nullable | Default        | Description                             |
+|------------|-----------|----------|----------------|-----------------------------------------|
+| id         | integer   | NO       | Auto-increment | Primary key                             |
+| email      | text      | NO       |                | Unique user email (has unique constraint) |
+| password   | text      | NO       |                | Encrypted password hash                 |
+| first_name | text      | YES      |                | User's first name                       |
+| last_name  | text      | YES      |                | User's last name                        |
+| phone      | text      | YES      |                | Contact phone number                    |
+| role       | user_role | YES      | 'user'         | Access control role (user/admin)        |
+| created_at | timestamp | YES      | now()          | Account creation timestamp              |
+| updated_at | timestamp | YES      | now()          | Last update timestamp                   |
+
+### 2. sessions
+| Column     | Data Type | Nullable | Default           | Description              |
+|------------|-----------|----------|-------------------|--------------------------|
+| id         | uuid      | NO       | gen_random_uuid() | Primary key              |
+| user_id    | integer   | NO       |                   | Foreign key to users.id  |
+| expires_at | timestamp | NO       |                   | Session expiration time  |
+| created_at | timestamp | YES      | now()             | Session creation time    |
+
+### 3. addresses
+| Column        | Data Type | Nullable | Default        | Description              |
+|---------------|-----------|----------|----------------|--------------------------|
+| id            | integer   | NO       | Auto-increment | Primary key              |
+| user_id       | integer   | NO       |                | Foreign key to users.id  |
+| address_line1 | text      | NO       |                | Street address line 1    |
+| address_line2 | text      | YES      |                | Street address line 2    |
+| city          | text      | NO       |                | City name                |
+| state         | text      | NO       |                | State/province           |
+| postal_code   | text      | NO       |                | ZIP/postal code          |
+| country       | text      | NO       |                | Country name             |
+| is_default    | boolean   | YES      | false          | Flag for default address |
+| created_at    | timestamp | YES      | now()          | Record creation time     |
+| updated_at    | timestamp | YES      | now()          | Last update time         |
+
+### 4. categories
+| Column      | Data Type | Nullable | Default        | Description         |
+|-------------|-----------|----------|----------------|---------------------|
+| id          | integer   | NO       | Auto-increment | Primary key         |
+| name        | text      | NO       |                | Category name       |
+| description | text      | YES      |                | Category description|
+| image_url   | text      | YES      |                | Category image URL  |
+| created_at  | timestamp | YES      | now()          | Record creation time|
+| updated_at  | timestamp | YES      | now()          | Last update time    |
+
+### 5. products
+| Column       | Data Type        | Nullable | Default        | Description                        |
+|--------------|------------------|----------|----------------|------------------------------------|
+| id           | integer          | NO       | Auto-increment | Primary key                        |
+| name         | text             | NO       |                | Product name                       |
+| price        | double precision | NO       |                | Product price                      |
+| description  | text             | NO       |                | Product description                |
+| image_url    | text             | NO       |                | Product image URL                  |
+| featured     | boolean          | YES      | false          | Flag for featured products         |
+| review_count | integer          | YES      | 0              | Number of reviews                  |
+| ingredients  | text[]           | YES      |                | Array of ingredients               |
+| category_id  | integer          | YES      |                | Foreign key to categories.id       |
+| stock        | integer          | YES      | 100            | Available inventory                |
+| sku          | text             | NO       |                | Stock keeping unit (unique constraint) |
+| created_at   | timestamp        | YES      | now()          | Record creation time               |
+| updated_at   | timestamp        | YES      | now()          | Last update time                   |
+
+### 6. lifestyle_items
+| Column      | Data Type | Nullable | Default        | Description         |
+|-------------|-----------|----------|----------------|---------------------|
+| id          | integer   | NO       | Auto-increment | Primary key         |
+| title       | text      | NO       |                | Lifestyle item title|
+| description | text      | NO       |                | Item description    |
+| image_url   | text      | NO       |                | Item image URL      |
+| link        | text      | NO       |                | URL link to content |
+| created_at  | timestamp | YES      | now()          | Record creation time|
+| updated_at  | timestamp | YES      | now()          | Last update time    |
+
+### 7. reviews
+| Column     | Data Type | Nullable | Default        | Description              |
+|------------|-----------|----------|----------------|--------------------------|
+| id         | integer   | NO       | Auto-increment | Primary key              |
+| user_id    | integer   | NO       |                | Foreign key to users.id  |
+| product_id | integer   | NO       |                | Foreign key to products.id|
+| rating     | integer   | NO       |                | Numeric rating value     |
+| comment    | text      | YES      |                | Review comment text      |
+| created_at | timestamp | YES      | now()          | Record creation time     |
+| updated_at | timestamp | YES      | now()          | Last update time         |
+
+### 8. wishlists
+| Column     | Data Type | Nullable | Default        | Description              |
+|------------|-----------|----------|----------------|--------------------------|
+| id         | integer   | NO       | Auto-increment | Primary key              |
+| user_id    | integer   | NO       |                | Foreign key to users.id  |
+| product_id | integer   | NO       |                | Foreign key to products.id|
+| created_at | timestamp | YES      | now()          | Record creation time     |
+
+### 9. carts
+| Column     | Data Type | Nullable | Default        | Description              |
+|------------|-----------|----------|----------------|--------------------------|
+| id         | integer   | NO       | Auto-increment | Primary key              |
+| user_id    | integer   | NO       |                | Foreign key to users.id  |
+| created_at | timestamp | YES      | now()          | Record creation time     |
+| updated_at | timestamp | YES      | now()          | Last update time         |
+
+### 10. cart_items
+| Column     | Data Type | Nullable | Default        | Description              |
+|------------|-----------|----------|----------------|--------------------------|
+| id         | integer   | NO       | Auto-increment | Primary key              |
+| cart_id    | integer   | NO       |                | Foreign key to carts.id  |
+| product_id | integer   | NO       |                | Foreign key to products.id|
+| quantity   | integer   | NO       | 1              | Product quantity         |
+| created_at | timestamp | YES      | now()          | Record creation time     |
+| updated_at | timestamp | YES      | now()          | Last update time         |
+
+### 11. orders
+| Column                   | Data Type        | Nullable | Default        | Description                             |
+|--------------------------|------------------|----------|----------------|-----------------------------------------|
+| id                       | integer          | NO       | Auto-increment | Primary key                             |
+| user_id                  | integer          | NO       |                | Foreign key to users.id                 |
+| order_number             | text             | NO       |                | Unique order reference (has unique constraint) |
+| status                   | order_status     | YES      | 'pending'      | Order fulfillment status                |
+| total                    | double precision | NO       |                | Order total amount                      |
+| shipping_address_id      | integer          | NO       |                | Foreign key to addresses.id             |
+| billing_address_id       | integer          | NO       |                | Foreign key to addresses.id             |
+| payment_status           | payment_status   | YES      | 'pending'      | Payment processing status               |
+| stripe_payment_intent_id | text             | YES      |                | Stripe payment reference ID             |
+| notes                    | text             | YES      |                | Order notes or comments                 |
+| created_at               | timestamp        | YES      | now()          | Record creation time                    |
+| updated_at               | timestamp        | YES      | now()          | Last update time                        |
+
+### 12. order_items
+| Column     | Data Type        | Nullable | Default        | Description                       |
+|------------|------------------|----------|----------------|-----------------------------------|
+| id         | integer          | NO       | Auto-increment | Primary key                       |
+| order_id   | integer          | NO       |                | Foreign key to orders.id          |
+| product_id | integer          | NO       |                | Foreign key to products.id        |
+| quantity   | integer          | NO       |                | Product quantity                  |
+| price      | double precision | NO       |                | Product price at time of purchase |
+| created_at | timestamp        | YES      | now()          | Record creation time              |
+
+### 13. newsletter_subscriptions
+| Column     | Data Type | Nullable | Default        | Description                         |
+|------------|-----------|----------|----------------|-------------------------------------|
+| id         | integer   | NO       | Auto-increment | Primary key                         |
+| email      | text      | NO       |                | Subscriber email (has unique constraint) |
+| created_at | timestamp | YES      | now()          | Subscription time                   |
+
+### 14. enquiries
+| Column      | Data Type | Nullable | Default        | Description                        |
+|-------------|-----------|----------|----------------|------------------------------------|
+| id          | integer   | NO       | Auto-increment | Primary key                        |
+| name        | text      | NO       |                | Contact name                       |
+| email       | text      | NO       |                | Contact email                      |
+| phone       | text      | YES      |                | Contact phone                      |
+| subject     | text      | NO       |                | Enquiry subject                    |
+| message     | text      | NO       |                | Enquiry message content            |
+| user_id     | integer   | YES      |                | Foreign key to users.id (optional) |
+| is_resolved | boolean   | YES      | false          | Resolution status flag             |
+| created_at  | timestamp | YES      | now()          | Submission time                    |
+
+## Key Relationships
+
+### Foreign Key Relationships
+| Table       | Column              | References | Referenced Column |
+|-------------|---------------------|------------|-------------------|
+| addresses   | user_id             | users      | id                |
+| cart_items  | cart_id             | carts      | id                |
+| cart_items  | product_id          | products   | id                |
+| carts       | user_id             | users      | id                |
+| enquiries   | user_id             | users      | id                |
+| order_items | order_id            | orders     | id                |
+| order_items | product_id          | products   | id                |
+| orders      | billing_address_id  | addresses  | id                |
+| orders      | shipping_address_id | addresses  | id                |
+| orders      | user_id             | users      | id                |
+| products    | category_id         | categories | id                |
+| reviews     | product_id          | products   | id                |
+| reviews     | user_id             | users      | id                |
+| sessions    | user_id             | users      | id                |
+| wishlists   | product_id          | products   | id                |
+| wishlists   | user_id             | users      | id                |
+
+### Unique Constraints
+| Table                      | Column       | Index Name                            |
+|----------------------------|--------------|---------------------------------------|
+| newsletter_subscriptions | email        | newsletter_subscriptions_email_unique |
+| orders                     | order_number | orders_order_number_unique            |
+| products                   | sku          | products_sku_unique                   |
+| users                      | email        | users_email_unique                    |
+
+## Implementation Notes
+*   Authentication flow: Uses JWT tokens with session management through PostgreSQL
+*   Stripe Integration: Orders include Stripe payment_intent_id for payment processing
+*   Data Integrity: Foreign key constraints protect referential integrity
+*   Order Processing: Status transitions from pending → processing → shipped → delivered
+
+This schema supports all aspects of the e-commerce platform including user accounts, product catalog, shopping cart, checkout process, order management, and customer engagement features.
