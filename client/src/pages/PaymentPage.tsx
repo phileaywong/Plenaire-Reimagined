@@ -93,7 +93,7 @@ function PaymentForm({ orderId, orderNumber, total }: { orderId: string; orderNu
 
 export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState('');
-  const [params] = useParams();
+  const params = useParams();
   const orderId = params?.id;
   const { toast } = useToast();
   const [, setLocation] = useLocation();

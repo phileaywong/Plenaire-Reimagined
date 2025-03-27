@@ -66,8 +66,12 @@ export default function LifestyleSection() {
                   </h3>
                   <p className="text-white/80 mb-4">{item.description}</p>
                   <a
-                    href={item.link}
-                    className="text-white font-poppins text-sm uppercase tracking-wider hover:text-roseLight transition-colors duration-300 flex items-center"
+                    href={item.link || "#"}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.open(item.link || "/products", "_blank");
+                    }}
+                    className="text-white font-poppins text-sm uppercase tracking-wider hover:text-roseLight transition-colors duration-300 flex items-center cursor-pointer"
                   >
                     Discover
                     <ArrowRight className="ml-2" size={16} />

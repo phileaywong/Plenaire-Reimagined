@@ -144,6 +144,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(req.user);
   });
   
+  // Update user profile
+  app.put("/api/auth/profile", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { firstName, lastName, email, phone } = req.body;
+      
+      // Validate inputs
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: "First name, last name, and email are required" });
+      }
+      
+      // Check if email is being changed and already exists
+      if (email !== req.user!.email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== req.user!.id) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+      }
+      
+      // Update user
+      const updatedUser = await storage.updateUser(req.user!.id, {
+        firstName,
+        lastName,
+        email
+      });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update profile" });
+      }
+      
+      // Return updated user without password
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+  
+  // Update user password
+  app.put("/api/auth/password", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      // Validate inputs
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+      
+      // Get user
+      const user = await storage.getUserById(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check current password
+      const passwordMatch = await comparePassword(currentPassword, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash new password
+      const hashedPassword = await require('./utils/password').hashPassword(newPassword);
+      
+      // Update password
+      const updatedUser = await storage.updateUser(req.user!.id, {
+        password: hashedPassword
+      });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Update password error:", error);
+      res.status(500).json({ message: "Failed to update password" });
+    }
+  });
+  
   // Address routes
   
   // Get user addresses
