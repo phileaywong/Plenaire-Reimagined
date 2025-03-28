@@ -1,183 +1,214 @@
-import { useQuery } from '@tanstack/react-query';
-import { useParams, Link, useLocation } from 'wouter';
-import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from "react";
+import { useRoute, useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Check, ShoppingBag, Loader2 } from "lucide-react";
 
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Card } from '@/components/ui/card';
-import { CheckCircle, Clock } from 'lucide-react';
+// Define the Order type
+interface OrderItem {
+  id: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  price: number;
+  total: number;
+  imageUrl?: string;
+}
 
-interface OrderWithItems {
+interface Order {
   id: number;
   userId: number;
-  orderNumber: string;
   status: string;
   total: number;
-  paymentStatus: string;
   createdAt: string;
-  items: {
+  updatedAt: string;
+  items: OrderItem[];
+  shippingAddress: {
     id: number;
-    orderId: number;
-    productId: number;
-    quantity: number;
-    price: number;
-    product: {
-      id: number;
-      name: string;
-      price: number;
-      imageUrl: string;
-      description: string;
-    }
-  }[];
+    fullName: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  paymentStatus: string;
 }
 
 export default function OrderConfirmation() {
-  const { orderId } = useParams<{ orderId: string }>();
-  const { toast } = useToast();
+  const [match, params] = useRoute<{ orderId: string }>('/order-confirmation/:orderId');
   const [, setLocation] = useLocation();
-  
-  // Fetch order details
-  const { data: order, isLoading, error } = useQuery<OrderWithItems>({
-    queryKey: [`/api/orders/${orderId}`],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest('GET', `/api/orders/${orderId}`);
-        const data = await res.json();
-        return data;
-      } catch (error) {
-        if (error instanceof Response && error.status === 401) {
-          setLocation('/login');
-        }
-        throw error;
-      }
-    },
-    enabled: !!orderId,
-  });
-  
-  // Show error toast if order fetch fails
+  const { toast } = useToast();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (error) {
-      toast({
-        title: 'Error',
-        description: 'Could not retrieve order details. Please try again.',
-        variant: 'destructive',
-      });
+    if (!match || !params) {
+      setLocation('/');
+      return;
     }
-  }, [error, toast]);
-  
-  // Loading state
-  if (isLoading) {
+
+    const fetchOrderDetails = async () => {
+      try {
+        const response = await apiRequest("GET", `/api/orders/${params.orderId}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch order details');
+        }
+        
+        const orderData = await response.json();
+        setOrder(orderData);
+      } catch (err: any) {
+        console.error("Error fetching order:", err);
+        setError(err.message || 'An error occurred while fetching your order details');
+        toast({
+          title: "Error",
+          description: err.message || "Could not retrieve order information",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [match, params?.orderId, setLocation, toast]);
+
+  if (loading) {
     return (
-      <div className="container py-10 flex justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"/>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-  
-  // Order not found
-  if (!order) {
+
+  if (error || !order) {
     return (
-      <div className="container py-10 text-center">
-        <h1 className="text-3xl font-serif font-light tracking-wide mb-4">Order Not Found</h1>
-        <p className="text-muted-foreground mb-6">We couldn't find the order you're looking for.</p>
-        <Button asChild>
-          <Link href="/">Back to Home</Link>
-        </Button>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Order Not Found</CardTitle>
+            <CardDescription>
+              {error || "We couldn't find the order you're looking for."}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={() => setLocation('/')} className="w-full">
+              Return to Home
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
-  
-  const isPaymentComplete = order.paymentStatus === 'completed';
-  
+
   return (
-    <div className="container max-w-3xl py-10">
-      <div className="text-center mb-8">
-        {isPaymentComplete ? (
-          <>
-            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-serif font-light tracking-wide">Thank You For Your Order!</h1>
-            <p className="text-muted-foreground mt-2">Your order has been confirmed and is being processed.</p>
-          </>
-        ) : (
-          <>
-            <Clock className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-            <h1 className="text-3xl font-serif font-light tracking-wide">Order Received</h1>
-            <p className="text-muted-foreground mt-2">Your payment is being processed. We'll send you a confirmation email shortly.</p>
-          </>
-        )}
-      </div>
-      
-      <Card className="p-6 mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-medium">Order Details</h2>
-          <span className="text-sm text-muted-foreground">#{order.orderNumber}</span>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-6">
-          <div className="text-muted-foreground">Date:</div>
-          <div>{new Date(order.createdAt).toLocaleDateString()}</div>
-          
-          <div className="text-muted-foreground">Status:</div>
-          <div>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</div>
-          
-          <div className="text-muted-foreground">Payment:</div>
-          <div>{order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}</div>
-        </div>
-        
-        <Separator className="mb-6" />
-        
-        <h3 className="font-medium mb-3">Items</h3>
-        <div className="space-y-3 mb-6">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex items-center">
-              <div className="w-16 h-16 rounded overflow-hidden mr-4 flex-shrink-0">
-                <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto p-4">
+        <Card className="mb-8">
+          <CardHeader className="bg-primary/5 border-b">
+            <div className="flex items-center gap-4">
+              <div className="bg-green-100 rounded-full p-3">
+                <Check className="h-8 w-8 text-green-600" />
               </div>
-              
-              <div className="flex-grow">
-                <div className="font-medium">{item.product.name}</div>
-                <div className="text-muted-foreground text-xs">Qty: {item.quantity} × ${item.price.toFixed(2)}</div>
-              </div>
-              
-              <div className="text-right">
-                ${(item.quantity * item.price).toFixed(2)}
+              <div>
+                <CardTitle className="text-2xl">Order Confirmed!</CardTitle>
+                <CardDescription>
+                  Order #{order.id} • Placed on {new Date(order.createdAt).toLocaleDateString()}
+                </CardDescription>
               </div>
             </div>
-          ))}
-        </div>
-        
-        <Separator className="mb-6" />
-        
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>${(order.total - 10).toFixed(2)}</span>
-          </div>
-          
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Shipping</span>
-            <span>$10.00</span>
-          </div>
-          
-          <Separator />
-          
-          <div className="flex justify-between font-medium text-lg">
-            <span>Total</span>
-            <span>${order.total.toFixed(2)}</span>
-          </div>
-        </div>
-      </Card>
-      
-      <div className="flex gap-3 justify-center">
-        <Button asChild variant="outline">
-          <Link href="/">Continue Shopping</Link>
-        </Button>
-        
-        <Button asChild>
-          <Link href="/account/orders">View My Orders</Link>
-        </Button>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-medium text-lg mb-2">Shipping Address</h3>
+                  <div className="text-gray-600">
+                    <p>{order.shippingAddress.fullName}</p>
+                    <p>{order.shippingAddress.addressLine1}</p>
+                    {order.shippingAddress.addressLine2 && <p>{order.shippingAddress.addressLine2}</p>}
+                    <p>
+                      {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
+                    </p>
+                    <p>{order.shippingAddress.country}</p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-lg mb-2">Order Summary</h3>
+                  <div className="space-y-1 text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Order Status:</span>
+                      <span className="font-medium">{order.status}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Payment Status:</span>
+                      <span className="font-medium">{order.paymentStatus}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total:</span>
+                      <span className="font-medium">
+                        {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD'
+                        }).format(order.total)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-lg mb-4">Order Items</h3>
+                <div className="space-y-4">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center border-b pb-4">
+                      <div className="h-20 w-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4">
+                        {item.imageUrl ? (
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.productName} 
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <ShoppingBag className="h-8 w-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-grow">
+                        <h4 className="font-medium">{item.productName}</h4>
+                        <div className="text-sm text-gray-500">
+                          Quantity: {item.quantity} × ${item.price.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="font-medium">
+                        ${item.total.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="border-t pt-6 flex flex-col sm:flex-row gap-4">
+            <Button onClick={() => setLocation('/')} className="sm:flex-1">
+              Continue Shopping
+            </Button>
+            <Button 
+              onClick={() => setLocation('/account/orders')}
+              variant="outline"
+              className="sm:flex-1"
+            >
+              View All Orders
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );

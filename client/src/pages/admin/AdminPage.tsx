@@ -46,7 +46,6 @@ const AdminPage = () => {
     user.email === 'admin@localhost.localdomain' || 
     user.role === 'admin' || 
     user.role === 'ADMIN' || 
-    user.role === 1 || 
     user.role === '1';
   
   // Log the direct check
