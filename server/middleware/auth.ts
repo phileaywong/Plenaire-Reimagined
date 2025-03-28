@@ -59,11 +59,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
               roleType: typeof user.role
             });
             
-            // Attach user and session to request
+            // Attach user and session to request with normalized role
             req.user = {
               id: user.id,
               email: user.email,
-              role: user.role || 'user'
+              // Ensure role is properly normalized as a string value
+              role: user.role ? String(user.role) : 'user'
             };
             
             // Convert captchaText to string | undefined (avoiding null)
@@ -102,11 +103,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             roleType: typeof user.role
           });
           
-          // Attach user to request
+          // Attach user to request with normalized role
           req.user = {
             id: user.id,
             email: user.email,
-            role: user.role || 'user'
+            // Ensure role is properly normalized as a string value
+            role: user.role ? String(user.role) : 'user'
           };
           
           return next();
@@ -214,11 +216,12 @@ export const authenticateSession = async (req: Request, res: Response, next: Nex
       return next(); // User not found, continue without authentication
     }
     
-    // Attach user and session to request
+    // Attach user and session to request with normalized role
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role || 'user'
+      // Ensure role is properly normalized as a string value
+      role: user.role ? String(user.role) : 'user'
     };
     
     // Convert captchaText to string | undefined (avoiding null)

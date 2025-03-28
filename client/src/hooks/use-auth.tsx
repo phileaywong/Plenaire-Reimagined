@@ -189,37 +189,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Calculate admin status with robust checking
+  // Enhanced admin status checking with better debug logging
   const checkIsAdmin = () => {
     if (!user) return false;
     
     // Robust admin check to handle potential data type issues
-    // 1. Check if role property exists and is not null
-    if (user.role === null || user.role === undefined) return false;
+    // 1. Check if role property exists and has a value
+    if (user.role === null || user.role === undefined) {
+      console.log("Admin check failed: user.role is null or undefined");
+      return false;
+    }
     
-    // 2. Case-insensitive comparison
-    const normalizedRole = String(user.role).toLowerCase();
+    // 2. Convert role to string and use case-insensitive comparison
+    const normalizedRole = String(user.role).toLowerCase().trim();
     
-    // 3. Check both exact string match and normalized match
-    const isRoleAdmin = user.role === 'admin' || normalizedRole === 'admin';
+    // 3. Multiple check strategies
+    const exactMatch = user.role === 'admin';
+    const normalizedMatch = normalizedRole === 'admin';
+    const knownAdminEmail = user.email === 'admin@localhost.localdomain';
     
-    // 4. Known admin email fallback (for extra safety)
-    const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
+    // Combined result - any of these being true means admin access
+    const isAdmin = exactMatch || normalizedMatch || knownAdminEmail;
     
-    // Log the admin check for debugging
+    // Detailed debug logging
     console.log("Auth hook - Admin check:", { 
       userId: user.id,
+      email: user.email,
       rawRole: user.role,
+      roleType: typeof user.role,
       normalizedRole,
-      isRoleAdmin,
-      isKnownAdminEmail,
-      finalResult: isRoleAdmin || isKnownAdminEmail
+      exactMatch,
+      normalizedMatch,
+      knownAdminEmail,
+      finalResult: isAdmin
     });
     
-    return isRoleAdmin || isKnownAdminEmail;
+    return isAdmin;
   };
   
-  // Compute this once instead of on every render
+  // Compute admin status
   const isAdmin = checkIsAdmin();
 
   return (

@@ -200,12 +200,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send user info (without password)
       const { password, ...userWithoutPassword } = user;
       
-      // Ensure role is properly sent (explicitly include it even if null)
+      // Ensure role is properly sent with detailed logging
+      console.log("Login successful - Raw user data from DB:", {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        roleType: typeof user.role
+      });
+      
+      // Create a clean user object with explicit role handling
       const userData = {
         ...userWithoutPassword,
-        // Ensure role is a string value to avoid type issues on the client
-        role: user.role || 'user'
+        // Normalize role to avoid any type issues
+        role: user.role ? String(user.role) : 'user'
       };
+      
+      console.log("Sending user data to client:", userData);
       
       res.json(userData);
     } catch (error) {
@@ -311,12 +321,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Remove sensitive data
       const { password, ...userWithoutPassword } = user;
       
-      // Ensure role is properly sent (explicitly include it even if null)
+      // Ensure role is properly sent with detailed logging
+      console.log("Auth/me endpoint - Raw user data from DB:", {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        roleType: typeof user.role
+      });
+      
+      // Create a clean user object with explicit role handling
       const userData = {
         ...userWithoutPassword,
-        // Ensure role is a string value to avoid type issues on the client
-        role: user.role || 'user'
+        // Normalize role to avoid any type issues
+        role: user.role ? String(user.role) : 'user'
       };
+      
+      console.log("Auth/me sending user data to client:", userData);
       
       res.json(userData);
     } catch (error) {
