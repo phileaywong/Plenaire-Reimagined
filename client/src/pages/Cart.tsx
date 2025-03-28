@@ -115,24 +115,54 @@ export default function Cart() {
     }
     
     try {
-      // Create an order first
-      const response = await apiRequest('POST', '/api/orders', {
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity
-        })),
-        // You might need to add shipping address here if required
+      console.log("Starting checkout process with items:", cartItems);
+      
+      // Create an order first with detailed error handling
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          items: cartItems.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity
+          }))
+        })
       });
       
+      // Capture response regardless of status
+      const responseData = await response.json();
+      console.log("Order creation response:", response.status, responseData);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create order');
+        // If unauthorized, redirect to login
+        if (response.status === 401) {
+          toast({
+            title: 'Authentication required',
+            description: 'Please sign in to complete your purchase.',
+            variant: 'destructive',
+          });
+          setLocation('/login');
+          return;
+        }
+        
+        throw new Error(responseData.message || 'Failed to create order');
       }
       
-      const orderData = await response.json();
-      // Navigate to checkout with the new order ID
-      setLocation(`/checkout/${orderData.id}`);
+      // Success path - navigate to checkout with order ID
+      console.log("Order created successfully:", responseData);
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      
+      if (responseData.id) {
+        setLocation(`/checkout/${responseData.id}`);
+      } else {
+        console.error("Order created but no ID returned:", responseData);
+        throw new Error("Order created but no ID was returned");
+      }
     } catch (error: any) {
+      console.error("Checkout error:", error);
       toast({
         title: 'Checkout failed',
         description: error.message || 'There was an error processing your checkout. Please try again.',

@@ -36,7 +36,9 @@ const AdminPage = () => {
   const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
   const isRoleAdmin = user.role === 'admin' || user.role === 'ADMIN' || 
                       (typeof user.role === 'string' && user.role.toLowerCase() === 'admin');
-  const isNumericAdminRole = user.role === '1' || user.role === 1;
+  // Handle numeric roles safely with proper type checking
+  const isNumericStringRole = typeof user.role === 'string' && user.role === '1';
+  const isNumericAdminRole = isNumericStringRole;
   
   // Combine all checks - any match means admin access
   const hasAdminAccess = isAdmin || isKnownAdminEmail || isRoleAdmin || isNumericAdminRole;

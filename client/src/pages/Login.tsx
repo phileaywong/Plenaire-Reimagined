@@ -46,56 +46,86 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      // Make the API request but get the raw response first
+      console.log('Login attempt with email:', values.email);
+      
+      // Track if we need to refresh the captcha
+      let needCaptchaRefresh = false;
+      
+      // Make the API request using fetch with credentials
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, no-cache, must-revalidate'
+        },
         body: JSON.stringify(values),
         credentials: 'include'
       });
       
-      // Parse the response as JSON
+      // Parse the response as JSON regardless of status
       const data = await response.json();
+      console.log('Server login response:', response.status, data);
       
-      // Check if the response is successful
+      // Handle error responses
       if (!response.ok) {
-        // Format an appropriate error message based on the response
         let errorMessage = data.message || 'Something went wrong. Please try again.';
         
-        // Log for debugging
-        console.log('Server response:', data);
+        // Special case for captcha requirements
+        if (data.requireCaptcha) {
+          errorMessage += ' Please enter the security code shown below.';
+          needCaptchaRefresh = true;
+        }
         
-        // Show appropriate error message
         toast({
           title: 'Login failed',
           description: errorMessage,
           variant: 'destructive',
         });
         
-        // Exit early
+        // If we need to refresh the captcha, do that
+        if (needCaptchaRefresh) {
+          // Logic to refresh captcha could go here
+          console.log('Captcha refresh needed');
+        }
+        
         return;
       }
       
-      // Success case
+      // Success handling
+      console.log('Login successful - user data:', {
+        id: data.id,
+        email: data.email,
+        role: data.role,
+        roleType: typeof data.role
+      });
+      
       toast({
         title: 'Logged in',
         description: 'You have successfully logged in.',
       });
       
+      // Reset form state
+      form.reset();
+      
       // Check if the user is an admin and redirect to admin page if so
-      if (data.role === 'admin') {
+      // Be very permissive in checking for admin role
+      const adminValues = ['admin', 'ADMIN', 'Admin', '1', 1];
+      const isAdmin = adminValues.includes(data.role) || data.email === 'admin@localhost.localdomain';
+      
+      if (isAdmin) {
         console.log('Admin user detected, redirecting to admin panel');
         setLocation('/admin');
       } else {
+        // For regular users, go back to home or previous page
         setLocation('/');
       }
+      
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Fallback error message if something completely unexpected happened
       toast({
         title: 'Login failed',
-        description: 'An unexpected error occurred. Please try again.',
+        description: 'Connection error. Please check your internet and try again.',
         variant: 'destructive',
       });
     } finally {

@@ -197,9 +197,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) {
         throw new Error("Logout failed");
       }
+      return res;
     },
     onSuccess: () => {
+      // Ensure all auth-related queries are invalidated/reset
       queryClient.setQueryData(["/api/auth/me"], null);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      
+      // Clear any other cached data that should be private
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/addresses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlist"] });
+      
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
@@ -207,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Logout error:", error);
       toast({
         title: "Logout failed",
         description: error.message,
