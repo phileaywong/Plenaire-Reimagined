@@ -330,15 +330,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
     try {
-      // Clear session if exists
-      if (req.session?.id) {
-        await storage.deleteSession(req.session.id);
+      // Get sessionId from cookie
+      const sessionId = req.cookies.sessionId;
+      
+      // Clear session if sessionId exists
+      if (sessionId) {
+        console.log("Logging out session:", sessionId);
+        await storage.deleteSession(sessionId);
+      } else {
+        console.log("No sessionId found in cookies during logout");
       }
       
       // Clear cookie
       res.clearCookie("sessionId");
       
-      res.json({ message: "Logged out successfully" });
+      res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
       console.error("Logout error:", error);
       res.status(500).json({ message: "Logout failed" });

@@ -104,7 +104,7 @@ export default function Cart() {
   };
 
   // Handle proceed to checkout
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!cartItems?.length) {
       toast({
         title: 'Cart is empty',
@@ -114,7 +114,31 @@ export default function Cart() {
       return;
     }
     
-    setLocation('/checkout');
+    try {
+      // Create an order first
+      const response = await apiRequest('POST', '/api/orders', {
+        items: cartItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity
+        })),
+        // You might need to add shipping address here if required
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create order');
+      }
+      
+      const orderData = await response.json();
+      // Navigate to checkout with the new order ID
+      setLocation(`/checkout/${orderData.id}`);
+    } catch (error: any) {
+      toast({
+        title: 'Checkout failed',
+        description: error.message || 'There was an error processing your checkout. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {

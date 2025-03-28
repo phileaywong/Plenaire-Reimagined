@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import AdminDashboard from "./AdminDashboard";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const AdminPage = () => {
   const { user, isLoading, isAdmin } = useAuth();
@@ -31,51 +32,35 @@ const AdminPage = () => {
     return null;
   }
   
-  // Log the FULL user object exactly as received
-  console.log("=== ADMIN PAGE - RECEIVED USER OBJECT ===");
-  console.log(JSON.stringify(user, null, 2));
-  console.log("=== END USER OBJECT ===");
+  // Enhanced admin check that combines all approaches
+  const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
+  const isRoleAdmin = user.role === 'admin' || user.role === 'ADMIN' || 
+                      (typeof user.role === 'string' && user.role.toLowerCase() === 'admin');
+  const isNumericAdminRole = user.role === '1' || user.role === 1;
   
-  // Most reliable check: we'll JUST use the isAdmin value from the hook
-  // Since we've improved the hook logic, this should be the most robust option
-  console.log("ADMIN ACCESS - Using hook's isAdmin value:", isAdmin);
+  // Combine all checks - any match means admin access
+  const hasAdminAccess = isAdmin || isKnownAdminEmail || isRoleAdmin || isNumericAdminRole;
   
-  // Check for admin access - add fallback direct check if hook's isAdmin fails
-  // This ensures we have multiple ways to identify admin users
-  const directAdminCheck = 
-    user.email === 'admin@localhost.localdomain' || 
-    user.role === 'admin' || 
-    user.role === 'ADMIN' || 
-    user.role === '1';
-  
-  // Log the direct check
-  console.log("Admin direct check:", directAdminCheck, {
+  // Very detailed logging for troubleshooting
+  console.log("Admin access check - DETAILED BREAKDOWN:", {
+    hookReportedAdmin: isAdmin,
     email: user.email,
-    emailMatch: user.email === 'admin@localhost.localdomain',
+    isKnownAdmin: isKnownAdminEmail,
     role: user.role,
-    roleType: typeof user.role
+    roleType: typeof user.role,
+    isRoleAdmin,
+    isNumericAdmin: isNumericAdminRole,
+    finalDecision: hasAdminAccess
   });
   
-  // Use either isAdmin from hook OR direct check
-  if (!isAdmin && !directAdminCheck) {
-    // Alert the user that they don't have access
+  // If all checks fail, deny access
+  if (!hasAdminAccess) {
     console.log("Admin page access denied: Not an admin");
-    
-    // Detailed logging for troubleshooting
-    console.log("Admin check failed:", {
-      email: user.email,
-      role: user.role,
-      roleType: typeof user.role,
-      isKnownAdmin: user.email === 'admin@localhost.localdomain',
-    });
-    
     toast({
       title: "Access Denied",
       description: `You don't have administrator privileges. If you believe this is an error, please contact support.`,
       variant: "destructive",
     });
-    
-    // Redirect to home page
     setLocation("/");
     return null;
   }
