@@ -51,33 +51,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register a new user
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
+      console.log("Registration request received:", {
+        email: req.body.email,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        hasPassword: !!req.body.password,
+        passwordLength: req.body.password?.length,
+        hasConfirmPassword: !!req.body.confirmPassword,
+        passwordsMatch: req.body.password === req.body.confirmPassword
+      });
+      
       // Validate the input data using the enhanced schema
       const validationResult = insertUserSchema.safeParse(req.body);
       
       // If validation fails, provide detailed error messages
       if (!validationResult.success) {
         const errors = validationResult.error.format();
-        console.log("Registration validation failed:", errors);
+        console.log("Registration validation failed:", JSON.stringify(errors, null, 2));
         
         // Determine the most important validation error to show
         let primaryErrorMessage = "Invalid input data";
+        let allErrorMessages: string[] = [];
         
-        // Safely check for email errors
-        if (errors.email?._errors && errors.email._errors.length > 0) {
-          primaryErrorMessage = errors.email._errors[0];
-        } 
-        // Safely check for password errors
-        else if (errors.password?._errors && errors.password._errors.length > 0) {
-          primaryErrorMessage = errors.password._errors[0];
-        } 
-        // Safely check for confirmPassword errors
-        else if (errors.confirmPassword?._errors && errors.confirmPassword._errors.length > 0) {
-          primaryErrorMessage = errors.confirmPassword._errors[0];
-        }
+        // Collect all error messages for better debugging
+        Object.entries(errors).forEach(([field, error]) => {
+          if (field !== '_errors' && error?._errors?.length) {
+            allErrorMessages.push(`${field}: ${error._errors.join(', ')}`);
+            
+            // Update primary message based on priority
+            if (field === 'email' && !primaryErrorMessage.includes('email')) {
+              primaryErrorMessage = error._errors[0];
+            } 
+            else if (field === 'password' && !primaryErrorMessage.includes('password')) {
+              primaryErrorMessage = error._errors[0];
+            } 
+            else if (field === 'confirmPassword' && primaryErrorMessage === "Invalid input data") {
+              primaryErrorMessage = error._errors[0];
+            }
+            else if (primaryErrorMessage === "Invalid input data") {
+              primaryErrorMessage = error._errors[0];
+            }
+          }
+        });
+        
+        console.log("Sending validation error response:", {
+          primaryMessage: primaryErrorMessage,
+          allErrors: allErrorMessages
+        });
         
         return res.status(400).json({ 
           message: primaryErrorMessage, 
-          errors: validationResult.error.errors 
+          errors: allErrorMessages
         });
       }
       

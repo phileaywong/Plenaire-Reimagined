@@ -38,8 +38,39 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
 
+  // Create a more detailed schema for the form with error messages
+  const formSchema = insertUserSchema
+    .superRefine((data, ctx) => {
+      // Enhance client-side validation with better error messages
+      if (!data.email) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Email is required",
+          path: ["email"]
+        });
+      }
+      
+      if (!data.firstName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "First name is required",
+          path: ["firstName"]
+        });
+      }
+      
+      if (!data.lastName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Last name is required",
+          path: ["lastName"]
+        });
+      }
+      
+      // Password validation is already handled by the schema
+    });
+
   const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       firstName: '',
@@ -48,6 +79,8 @@ export default function Register() {
       confirmPassword: '',
       phone: '', // Initialize with empty string, not null
     },
+    // Debugging for form errors
+    mode: "onChange"
   });
 
   async function onSubmit(values: RegisterFormValues) {
