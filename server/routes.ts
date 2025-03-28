@@ -51,7 +51,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register a new user
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const data = insertUserSchema.parse(req.body);
+      // Validate the input data using the enhanced schema
+      const validationResult = insertUserSchema.safeParse(req.body);
+      
+      // If validation fails, provide detailed error messages
+      if (!validationResult.success) {
+        const errors = validationResult.error.format();
+        console.log("Registration validation failed:", errors);
+        
+        // Determine the most important validation error to show
+        let primaryErrorMessage = "Invalid input data";
+        
+        // Safely check for email errors
+        if (errors.email?._errors && errors.email._errors.length > 0) {
+          primaryErrorMessage = errors.email._errors[0];
+        } 
+        // Safely check for password errors
+        else if (errors.password?._errors && errors.password._errors.length > 0) {
+          primaryErrorMessage = errors.password._errors[0];
+        } 
+        // Safely check for confirmPassword errors
+        else if (errors.confirmPassword?._errors && errors.confirmPassword._errors.length > 0) {
+          primaryErrorMessage = errors.confirmPassword._errors[0];
+        }
+        
+        return res.status(400).json({ 
+          message: primaryErrorMessage, 
+          errors: validationResult.error.errors 
+        });
+      }
+      
+      const data = validationResult.data;
       
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(data.email);
@@ -59,8 +89,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email already in use" });
       }
       
-      // Create user
-      const user = await storage.createUser(data);
+      // Hash the password before storing it
+      const hashedPassword = await hashPassword(data.password);
+      
+      // Create user with hashed password
+      const user = await storage.createUser({
+        ...data,
+        password: hashedPassword
+      });
+      
       if (!user) {
         return res.status(500).json({ message: "Failed to create user" });
       }
@@ -75,15 +112,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secure: process.env.NODE_ENV === "production"
       });
       
+      // Log successful registration
+      console.log(`New user registered: ${user.email} (ID: ${user.id})`);
+      
       // Send user info (without password)
       const { password, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
       if (error instanceof ZodError) {
-        res.status(400).json({ message: "Invalid input", errors: error.errors });
+        console.error("Registration ZodError:", error.errors);
+        res.status(400).json({ 
+          message: "Invalid input data. Please check all fields and try again.", 
+          errors: error.errors 
+        });
       } else {
         console.error("Registration error:", error);
-        res.status(500).json({ message: "Registration failed" });
+        res.status(500).json({ message: "Server error while creating account. Please try again later." });
       }
     }
   });

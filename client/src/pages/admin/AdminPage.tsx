@@ -39,8 +39,22 @@ const AdminPage = () => {
     isAdmin
   });
   
-  // Check for admin access using the isAdmin flag from the auth hook
-  if (!isAdmin) {
+  // Enhanced admin access check with fallback methods
+  const hasAdminAccess = isAdmin || 
+                         user.role === 'admin' || 
+                         user.email === 'admin@localhost.localdomain';
+  
+  // Detailed logging of access check
+  console.log("Admin access check details:", {
+    isAdminFromHook: isAdmin,
+    roleDirectCheck: user.role === 'admin',
+    normalizedRoleCheck: String(user.role || '').toLowerCase() === 'admin',
+    knownAdminEmail: user.email === 'admin@localhost.localdomain',
+    finalDecision: hasAdminAccess
+  });
+  
+  // Check for admin access
+  if (!hasAdminAccess) {
     console.log("Admin page access denied: Not an admin");
     toast({
       title: "Access Denied",

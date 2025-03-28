@@ -189,27 +189,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Enhanced admin status checking with better debug logging
+  // Enhanced admin status checking with better debug logging and multiple fallback strategies
   const checkIsAdmin = () => {
     if (!user) return false;
     
-    // Robust admin check to handle potential data type issues
-    // 1. Check if role property exists and has a value
-    if (user.role === null || user.role === undefined) {
-      console.log("Admin check failed: user.role is null or undefined");
-      return false;
+    // 1. Early return for known admin email 
+    const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
+    if (isKnownAdminEmail) {
+      console.log("Admin check: Recognized admin email");
+      return true;
     }
     
-    // 2. Convert role to string and use case-insensitive comparison
-    const normalizedRole = String(user.role).toLowerCase().trim();
-    
-    // 3. Multiple check strategies
+    // 2. Direct role check for 'admin' string value (most common case)
     const exactMatch = user.role === 'admin';
-    const normalizedMatch = normalizedRole === 'admin';
-    const knownAdminEmail = user.email === 'admin@localhost.localdomain';
+    if (exactMatch) {
+      console.log("Admin check: Exact role match");
+      return true;
+    }
     
-    // Combined result - any of these being true means admin access
-    const isAdmin = exactMatch || normalizedMatch || knownAdminEmail;
+    // 3. Case-insensitive role check for more resilience
+    // Handle null, undefined, or non-string values safely
+    let normalizedRole = '';
+    if (user.role !== null && user.role !== undefined) {
+      normalizedRole = String(user.role).toLowerCase().trim();
+    }
+    
+    const normalizedMatch = normalizedRole === 'admin';
+    if (normalizedMatch) {
+      console.log("Admin check: Case-insensitive role match");
+      return true;
+    }
+    
+    // 4. Additional check - numeric role value (in case role is stored as a number)
+    const numericMatch = user.role === 1 || user.role === '1';
+    if (numericMatch) {
+      console.log("Admin check: Numeric role match");
+      return true;
+    }
+    
+    // Combined result logging
+    const isAdmin = exactMatch || normalizedMatch || isKnownAdminEmail || numericMatch;
     
     // Detailed debug logging
     console.log("Auth hook - Admin check:", { 
@@ -220,7 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       normalizedRole,
       exactMatch,
       normalizedMatch,
-      knownAdminEmail,
+      isKnownAdminEmail,
+      numericMatch,
       finalResult: isAdmin
     });
     

@@ -47,6 +47,16 @@ function Router() {
 
   // If we're on an admin route, render the admin layout
   if (isAdminRoute) {
+    // Enhanced logging for admin route debugging
+    console.log("Rendering admin route with user:", {
+      isLoading,
+      isAuthenticated: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      userRole: user?.role,
+      isAdmin: user?.role === 'admin' || user?.email === 'admin@localhost.localdomain'
+    });
+    
     // Admin routes should not have the regular header/footer
     return (
       <div className="flex flex-col min-h-screen">
