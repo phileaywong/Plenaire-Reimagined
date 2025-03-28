@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use((req, res, next) => {
   }
 });
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser()); // Parse cookies
 
 app.use((req, res, next) => {
   const start = Date.now();

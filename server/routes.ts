@@ -93,10 +93,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = loginUserSchema.parse(req.body);
       
-      // Verify captcha if provided (simple implementation)
+      // Get user by email
+      const user = await storage.getUserByEmail(data.email);
+      
+      // Verify captcha if provided
       if (data.captcha) {
-        // Simple captcha validation (in a real app, would use a more sophisticated approach)
-        const expectedCaptcha = req.session?.captchaText;
+        // Check in both the memory session (req.session) and the database session (via cookies)
+        let expectedCaptcha = req.session?.captchaText;
+        console.log("Memory session captcha:", expectedCaptcha);
+        
+        // If not in memory session, try to get from database session
+        if (!expectedCaptcha && req.cookies.sessionId) {
+          const session = await storage.getSessionById(req.cookies.sessionId);
+          expectedCaptcha = session?.captchaText || undefined;
+          console.log("Database session captcha:", expectedCaptcha);
+        }
+        
+        console.log("Provided captcha:", data.captcha);
+        console.log("Expected captcha:", expectedCaptcha);
+        
         if (!expectedCaptcha || data.captcha !== expectedCaptcha) {
           return res.status(400).json({ 
             message: "Incorrect security code. Please try again.",
@@ -104,14 +119,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Clear the captcha from session after verification
+        // Clear the captcha after verification
         if (req.session) {
           req.session.captchaText = undefined;
         }
+        
+        if (req.cookies.sessionId) {
+          await storage.updateSessionCaptcha(req.cookies.sessionId, ""); // Clear it in the database
+        }
       }
-      
-      // Get user by email
-      const user = await storage.getUserByEmail(data.email);
       
       // Check if captcha is required but not provided
       if (user && user.loginAttempts && user.loginAttempts >= 3 && !data.captcha) {
@@ -212,10 +228,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a random 6-digit number for simplicity
       const captchaText = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Store the captcha text in the session for later verification
-      if (req.session) {
+      // Create a temporary session if one doesn't exist
+      if (!req.user) {
+        // Create a 15-minute session for captcha
+        const tempUser = await storage.getUserByEmail("admin@localhost.localdomain");
+        if (!tempUser) {
+          return res.status(500).json({ message: "Failed to generate captcha session" });
+        }
+        
+        const session = await storage.createSession(tempUser.id);
+        
+        // Update session with captcha text
+        await storage.updateSessionCaptcha(session.id, captchaText);
+        
+        // Set the session ID in a cookie
+        res.cookie('sessionId', session.id, { 
+          httpOnly: true,
+          sameSite: 'strict',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+        
+        // Also store in memory session for compatibility
+        if (req.session) {
+          req.session.captchaText = captchaText;
+        }
+      } else if (req.session) {
+        // User is logged in, use their existing session
         req.session.captchaText = captchaText;
+        
+        // Also update the database session if we have the ID
+        if (req.cookies.sessionId) {
+          await storage.updateSessionCaptcha(req.cookies.sessionId, captchaText);
+        }
       }
+      
+      console.log("Generated captcha:", captchaText); // Logging for debugging
       
       // Return the captcha text for display
       res.json({ captcha: captchaText });
