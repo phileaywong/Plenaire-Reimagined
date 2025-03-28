@@ -129,6 +129,13 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
     } catch (error: any) {
       console.error('Login error:', error);
       
+      // Display user-friendly error message
+      toast({
+        title: 'Login failed',
+        description: error.message || 'An error occurred during login. Please try again.',
+        variant: 'destructive',
+      });
+      
       // Check if captcha is required from the backend
       if ((error as any).requireCaptcha || 
           (error.message && (error.message.includes('Security code') || 
@@ -138,7 +145,6 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
         window.sessionStorage.setItem('showLoginCaptcha', 'true');
         fetchCaptcha();
       }
-      // Error handling is done in the mutation itself
     }
   };
 
@@ -151,9 +157,15 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
       });
       onOpenChange(false);
       navigate('/account');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      // Error handling is done in the mutation itself
+      
+      // Display user-friendly error message
+      toast({
+        title: 'Registration failed',
+        description: error.message || 'An error occurred during registration. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 

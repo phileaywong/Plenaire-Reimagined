@@ -42,7 +42,7 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      await apiRequest('POST', '/api/auth/login', values);
+      const response = await apiRequest('POST', '/api/auth/login', values);
       
       toast({
         title: 'Logged in',
@@ -51,9 +51,27 @@ export default function Login() {
       
       setLocation('/');
     } catch (error: any) {
+      console.error('Login error:', error);
+      
+      let errorMessage = 'Invalid email or password. Please try again.';
+      
+      // Try to extract the specific error message from the response
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response) {
+        try {
+          const errorData = await error.response.json();
+          if (errorData && errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // If we can't parse the JSON, fall back to the default message
+        }
+      }
+      
       toast({
         title: 'Login failed',
-        description: 'Invalid email or password. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
