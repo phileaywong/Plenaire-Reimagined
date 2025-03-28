@@ -13,7 +13,7 @@ interface User {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
-  role: "user" | "admin" | null;
+  role: string | null; // Using string instead of union type for more flexibility
   createdAt: Date | null;
   updatedAt: Date | null;
 }
@@ -22,6 +22,7 @@ type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
+  isAdmin: boolean;
   loginMutation: any;
   logoutMutation: any;
   registerMutation: any;
@@ -188,12 +189,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Calculate admin status with robust checking
+  const checkIsAdmin = () => {
+    if (!user) return false;
+    
+    // Robust admin check to handle potential data type issues
+    // 1. Check if role property exists and is not null
+    if (user.role === null || user.role === undefined) return false;
+    
+    // 2. Case-insensitive comparison
+    const normalizedRole = String(user.role).toLowerCase();
+    
+    // 3. Check both exact string match and normalized match
+    const isRoleAdmin = user.role === 'admin' || normalizedRole === 'admin';
+    
+    // 4. Known admin email fallback (for extra safety)
+    const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
+    
+    // Log the admin check for debugging
+    console.log("Auth hook - Admin check:", { 
+      userId: user.id,
+      rawRole: user.role,
+      normalizedRole,
+      isRoleAdmin,
+      isKnownAdminEmail,
+      finalResult: isRoleAdmin || isKnownAdminEmail
+    });
+    
+    return isRoleAdmin || isKnownAdminEmail;
+  };
+  
+  // Compute this once instead of on every render
+  const isAdmin = checkIsAdmin();
+
   return (
     <AuthContext.Provider
       value={{
         user: user || null,
         isLoading,
         error: error as Error | null,
+        isAdmin,
         loginMutation,
         logoutMutation,
         registerMutation,

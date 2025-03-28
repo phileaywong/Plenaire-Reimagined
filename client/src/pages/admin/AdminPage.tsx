@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import AdminDashboard from "./AdminDashboard";
@@ -6,19 +6,11 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const AdminPage = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Debug information about the user and role
-    if (user) {
-      console.log("Admin page - User data:", user);
-      console.log("Admin page - User role:", user.role);
-    }
-  }, [user]);
-
-  // Check if user is loading
+  // Display a loading state while we're fetching auth data
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -27,9 +19,9 @@ const AdminPage = () => {
     );
   }
 
-  // Check if user is authenticated and is an admin
+  // Check if user is authenticated
   if (!user) {
-    console.log("Admin page access denied: No user data available");
+    console.log("Admin page access denied: Not logged in");
     toast({
       title: "Access Denied",
       description: "You must be logged in to access the admin area",
@@ -40,44 +32,28 @@ const AdminPage = () => {
   }
   
   // Log the exact user data for debugging
-  console.log("Admin page - User data:", JSON.stringify(user));
-  
-  // Enhanced admin role check for debugging
-  const userRoleRaw = user.role;
-  const userRole = String(userRoleRaw || '').toLowerCase();
-  
-  // Log all data for debugging
-  console.log("Admin role check details:", {
-    rawRole: userRoleRaw,
-    normalizedRole: userRole,
-    userObject: JSON.stringify(user),
-    exactTypeOf: typeof userRoleRaw,
-    typesMatch: typeof userRoleRaw === 'string',
-    directComparison: userRoleRaw === 'admin',
-    lowercaseComparison: userRole === 'admin'
+  console.log("Admin page access - User data:", {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    isAdmin
   });
   
-  // Multiple comparison strategies for robustness
-  const isAdmin = 
-    userRoleRaw === 'admin' || // Exact match
-    userRole === 'admin' ||   // Case-insensitive match
-    user.email === 'admin@localhost.localdomain'; // Fallback for known admin
-  
-  console.log("Final admin determination:", isAdmin);
-  
+  // Check for admin access using the isAdmin flag from the auth hook
   if (!isAdmin) {
+    console.log("Admin page access denied: Not an admin");
     toast({
       title: "Access Denied",
-      description: `You don't have administrator privileges. Current role: ${userRoleRaw || "none"}`,
+      description: `You don't have administrator privileges. Current role: ${user.role || "none"}`,
       variant: "destructive",
     });
     setLocation("/");
     return null;
   }
   
-  // If we reach here, the user is confirmed as an admin
+  // We have confirmed admin access at this point
   console.log("Admin access granted, displaying admin dashboard");
-
+  
   return <AdminDashboard />;
 };
 

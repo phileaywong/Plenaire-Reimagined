@@ -172,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Reset login attempts on successful login
-      if (user.loginAttempts > 0 || user.lockUntil) {
+      if ((user.loginAttempts && user.loginAttempts > 0) || user.lockUntil) {
         await storage.updateUser(user.id, {
           loginAttempts: 0,
           lockUntil: null
@@ -189,9 +189,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secure: process.env.NODE_ENV === "production"
       });
       
+      // Log user data for debugging
+      console.log("Login success - User data:", {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        roleType: typeof user.role
+      });
+      
       // Send user info (without password)
       const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      
+      // Ensure role is properly sent (explicitly include it even if null)
+      const userData = {
+        ...userWithoutPassword,
+        // Ensure role is a string value to avoid type issues on the client
+        role: user.role || 'user'
+      };
+      
+      res.json(userData);
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
@@ -280,12 +296,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserById(req.user!.id);
       
       if (!user) {
+        console.error(`User not found in DB with ID: ${req.user!.id}`);
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Log the user data to debug
+      console.log("User data from /api/auth/me endpoint:", {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        roleType: typeof user.role
+      });
+      
       // Remove sensitive data
       const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      
+      // Ensure role is properly sent (explicitly include it even if null)
+      const userData = {
+        ...userWithoutPassword,
+        // Ensure role is a string value to avoid type issues on the client
+        role: user.role || 'user'
+      };
+      
+      res.json(userData);
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ message: "Failed to get user data" });

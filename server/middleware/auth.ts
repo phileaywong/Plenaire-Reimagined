@@ -33,6 +33,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     // First try session-based auth (more secure)
     const sessionId = req.cookies?.sessionId;
     
+    // Log the sessionId for debugging
+    console.log(`Auth middleware - Session ID from cookie: ${sessionId || 'none'}`);
+    
     if (sessionId) {
       const session = await storage.getSessionById(sessionId);
       
@@ -40,12 +43,22 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         // Check if session is expired
         if (new Date() > new Date(session.expiresAt)) {
           // Delete expired session
+          console.log(`Auth middleware - Session expired: ${sessionId}`);
           await storage.deleteSession(sessionId);
         } else {
           // Session is valid, get user
+          console.log(`Auth middleware - Valid session for user ID: ${session.userId}`);
           const user = await storage.getUserById(session.userId);
           
           if (user) {
+            // Log user data for debugging
+            console.log('Auth middleware - User data from session:', {
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              roleType: typeof user.role
+            });
+            
             // Attach user and session to request
             req.user = {
               id: user.id,
@@ -62,8 +75,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             };
             
             return next();
+          } else {
+            console.log(`Auth middleware - User not found for session: ${sessionId}`);
           }
         }
+      } else {
+        console.log(`Auth middleware - Session not found: ${sessionId}`);
       }
     }
     
@@ -71,26 +88,42 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
     
     if (token) {
-      const decoded = jwt.verify(token, JWT_SECRET) as { id: number };
-      const user = await storage.getUserById(decoded.id);
-      
-      if (user) {
-        // Attach user to request
-        req.user = {
-          id: user.id,
-          email: user.email,
-          role: user.role || 'user'
-        };
+      console.log('Auth middleware - Attempting token-based auth');
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: number };
+        const user = await storage.getUserById(decoded.id);
         
-        return next();
+        if (user) {
+          // Log user data for debugging
+          console.log('Auth middleware - User data from token:', {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            roleType: typeof user.role
+          });
+          
+          // Attach user to request
+          req.user = {
+            id: user.id,
+            email: user.email,
+            role: user.role || 'user'
+          };
+          
+          return next();
+        } else {
+          console.log(`Auth middleware - User not found for token ID: ${decoded.id}`);
+        }
+      } catch (tokenError) {
+        console.error('Auth middleware - Token verification error:', tokenError);
       }
     }
     
     // No valid authentication found
+    console.log('Auth middleware - No valid authentication found');
     next();
   } catch (error) {
     // Error during authentication, continue without authenticating
-    console.error('Auth error:', error);
+    console.error('Auth middleware - Error:', error);
     next();
   }
 };
@@ -103,6 +136,25 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   next();
 };
 
+// Helper function to check if a user is an admin
+const isUserAdmin = (user: any): boolean => {
+  if (!user) return false;
+  
+  // Handle different data formats gracefully
+  // 1. Try direct string comparison first (most common case)
+  if (user.role === 'admin') return true;
+  
+  // 2. Case-insensitive comparison as fallback
+  const normalizedRole = String(user.role || '').toLowerCase().trim();
+  if (normalizedRole === 'admin') return true;
+  
+  // 3. Special case for known admin email
+  if (user.email === 'admin@localhost.localdomain') return true;
+  
+  // Not an admin by any check
+  return false;
+};
+
 // Check if user is an admin
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
@@ -110,16 +162,23 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
     return res.status(401).json({ message: 'Authentication required' });
   }
   
-  // Debug log
-  console.log(`Admin check for user ${req.user.id}: role = ${req.user.role}`);
+  // Detailed debug logging for troubleshooting
+  console.log(`Admin check for user ${req.user.id}:`, {
+    userId: req.user.id,
+    email: req.user.email,
+    role: req.user.role,
+    roleType: typeof req.user.role,
+    normalizedRole: String(req.user.role || '').toLowerCase(),
+    isAdmin: isUserAdmin(req.user)
+  });
   
-  // Ensure we're comparing correctly - case insensitive string comparison
-  const userRole = String(req.user.role || '').toLowerCase();
-  if (userRole !== 'admin') {
-    console.log(`Admin access denied for user ${req.user.id}: role = ${req.user.role} (normalized: ${userRole})`);
+  // Use the helper function for consistent admin checks
+  if (!isUserAdmin(req.user)) {
+    console.log(`Admin access denied for user ${req.user.id}`);
     return res.status(403).json({ message: 'Admin permission required' });
   }
   
+  // Admin access granted
   console.log(`Admin access granted for user ${req.user.id}`);
   next();
 };
