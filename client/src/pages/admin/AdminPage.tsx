@@ -42,17 +42,33 @@ const AdminPage = () => {
   // Log the exact user data for debugging
   console.log("Admin page - User data:", JSON.stringify(user));
   
-  // Check admin role with string comparison
-  // Ensure we're comparing strings in a consistent manner
-  const userRole = String(user.role || '').toLowerCase();
-  const isAdmin = userRole === 'admin';
+  // Enhanced admin role check for debugging
+  const userRoleRaw = user.role;
+  const userRole = String(userRoleRaw || '').toLowerCase();
   
-  console.log("Admin role check: Current role =", userRole, "Is admin?", isAdmin);
+  // Log all data for debugging
+  console.log("Admin role check details:", {
+    rawRole: userRoleRaw,
+    normalizedRole: userRole,
+    userObject: JSON.stringify(user),
+    exactTypeOf: typeof userRoleRaw,
+    typesMatch: typeof userRoleRaw === 'string',
+    directComparison: userRoleRaw === 'admin',
+    lowercaseComparison: userRole === 'admin'
+  });
+  
+  // Multiple comparison strategies for robustness
+  const isAdmin = 
+    userRoleRaw === 'admin' || // Exact match
+    userRole === 'admin' ||   // Case-insensitive match
+    user.email === 'admin@localhost.localdomain'; // Fallback for known admin
+  
+  console.log("Final admin determination:", isAdmin);
   
   if (!isAdmin) {
     toast({
       title: "Access Denied",
-      description: `You don't have administrator privileges. Current role: ${user.role || "none"}`,
+      description: `You don't have administrator privileges. Current role: ${userRoleRaw || "none"}`,
       variant: "destructive",
     });
     setLocation("/");

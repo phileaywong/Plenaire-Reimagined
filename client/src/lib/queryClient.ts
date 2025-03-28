@@ -45,6 +45,9 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Log request for debugging
+  console.log(`API Request: ${method} ${url}`, data);
+  
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -52,7 +55,12 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
+  // Log response status for debugging
+  console.log(`API Response: ${method} ${url} - Status: ${res.status}`);
+  
+  // Don't throw here - let the caller handle errors
+  // This way we can return the response even if it's an error
+  // await throwIfResNotOk(res);
   return res;
 }
 
@@ -62,16 +70,46 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const url = queryKey[0] as string;
+    console.log(`Query request: GET ${url}`);
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
+    
+    console.log(`Query response: GET ${url} - Status: ${res.status}`);
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    // Handle 401 (Unauthorized) based on options
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        console.log(`Query (${url}): Unauthorized, returning null as configured`);
+        return null;
+      } else {
+        // Will throw an error below using throwIfResNotOk
+        console.log(`Query (${url}): Unauthorized, will throw error as configured`);
+      }
     }
 
-    await throwIfResNotOk(res);
-    return await res.json();
+    // Check if response is ok before parsing
+    if (!res.ok) {
+      try {
+        const errorData = await res.json();
+        console.error(`Query error (${url}):`, errorData);
+        throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
+      } catch (jsonError) {
+        // If JSON parsing fails, throw with status text
+        throw new Error(`Request failed: ${res.status} ${res.statusText}`);
+      }
+    }
+    
+    // Only try to parse JSON if response is OK
+    try {
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.error(`Failed to parse JSON response from ${url}:`, error);
+      throw new Error("Invalid response format from server");
+    }
   };
 
 export const queryClient = new QueryClient({

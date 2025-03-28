@@ -78,17 +78,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         captcha: credentials.captcha
       };
       
+      console.log("Login attempt:", { email: apiCredentials.email });
+      
       const res = await apiRequest("POST", "/api/auth/login", apiCredentials);
+      
+      // Check if response is not OK (4xx or 5xx)
       if (!res.ok) {
-        const errorData = await res.json();
-        // Pass along the requireCaptcha flag if it exists
-        if (errorData.requireCaptcha) {
-          const error = new Error(errorData.message || "Login failed");
-          (error as any).requireCaptcha = true;
-          throw error;
+        let errorMessage = "Login failed";
+        let requireCaptcha = false;
+        
+        try {
+          // Try to parse the error as JSON
+          const errorData = await res.json();
+          console.log("Login error data:", errorData);
+          
+          // Use the server's error message if available
+          errorMessage = errorData.message || errorMessage;
+          
+          // Check if captcha is required
+          requireCaptcha = !!errorData.requireCaptcha;
+        } catch (parseError) {
+          // If we can't parse JSON, try to get text
+          try {
+            const errorText = await res.text();
+            errorMessage = errorText || `Server error (${res.status})`;
+          } catch (textError) {
+            // If all else fails, use status text
+            errorMessage = res.statusText || `Server error (${res.status})`;
+          }
         }
-        throw new Error(errorData.message || "Login failed");
+        
+        // Create error object
+        const error = new Error(errorMessage);
+        
+        // Add properties to the error object
+        (error as any).status = res.status;
+        (error as any).requireCaptcha = requireCaptcha;
+        
+        throw error;
       }
+      
       return await res.json();
     },
     onSuccess: () => {
@@ -100,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Login error in mutation:", error);
       toast({
         title: "Login failed",
         description: error.message,
