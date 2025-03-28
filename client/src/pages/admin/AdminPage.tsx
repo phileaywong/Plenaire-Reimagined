@@ -40,8 +40,25 @@ const AdminPage = () => {
   // Since we've improved the hook logic, this should be the most robust option
   console.log("ADMIN ACCESS - Using hook's isAdmin value:", isAdmin);
   
-  // Check for admin access - simpler approach relying on the hook
-  if (!isAdmin) {
+  // Check for admin access - add fallback direct check if hook's isAdmin fails
+  // This ensures we have multiple ways to identify admin users
+  const directAdminCheck = 
+    user.email === 'admin@localhost.localdomain' || 
+    user.role === 'admin' || 
+    user.role === 'ADMIN' || 
+    user.role === 1 || 
+    user.role === '1';
+  
+  // Log the direct check
+  console.log("Admin direct check:", directAdminCheck, {
+    email: user.email,
+    emailMatch: user.email === 'admin@localhost.localdomain',
+    role: user.role,
+    roleType: typeof user.role
+  });
+  
+  // Use either isAdmin from hook OR direct check
+  if (!isAdmin && !directAdminCheck) {
     // Alert the user that they don't have access
     console.log("Admin page access denied: Not an admin");
     

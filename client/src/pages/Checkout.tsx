@@ -1,389 +1,186 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useLocation, Link } from 'wouter';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
+import { useStripe, useElements, Elements, PaymentElement } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { useEffect, useState } from 'react';
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useLocation, useRoute } from "wouter";
+import { Loader2 } from "lucide-react";
 
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CartItem, Product, Address } from '@/lib/types';
+// Make sure to call `loadStripe` outside of a component's render to avoid
+// recreating the `Stripe` object on every render.
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+}
 
-// Address selection schema
-const checkoutSchema = z.object({
-  shippingAddressId: z.union([
-    z.string().min(1, { message: 'Please select a shipping address' }),
-    z.number().positive()
-  ]),
-  billingAddressId: z.union([
-    z.string().min(1, { message: 'Please select a billing address' }),
-    z.number().positive()
-  ]),
-  notes: z.string().optional(),
-});
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
-type CheckoutFormValues = z.infer<typeof checkoutSchema>;
-
-// Checkout Component
-export default function Checkout() {
+const CheckoutForm = ({ amount, orderId }: { amount: number, orderId: string }) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
-  const [orderId, setOrderId] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Fetch cart items
-  const { data: cartItems, isLoading: cartLoading } = useQuery<(CartItem & { product: Product })[]>({
-    queryKey: ['/api/cart'],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest('GET', '/api/cart');
-        const data = await res.json();
-        return data;
-      } catch (error) {
-        // If unauthorized, redirect to login
-        if (error instanceof Response && error.status === 401) {
-          toast({
-            title: 'Authentication required',
-            description: 'Please log in to continue with checkout.',
-            variant: 'destructive',
-          });
-          setLocation('/login');
-          return [];
-        }
-        throw error;
-      }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
     }
-  });
 
-  // Fetch user addresses
-  const { data: addresses, isLoading: addressesLoading } = useQuery<Address[]>({
-    queryKey: ['/api/addresses'],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest('GET', '/api/addresses');
-        const data = await res.json();
-        return data;
-      } catch (error) {
-        if (error instanceof Response && error.status === 401) {
-          return [];
-        }
-        throw error;
-      }
-    }
-  });
+    setIsProcessing(true);
 
-  const form = useForm<CheckoutFormValues>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: {
-      shippingAddressId: '', // Will be coerced to number on submission
-      billingAddressId: '', // Will be coerced to number on submission
-      notes: '',
-    },
-  });
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/order-confirmation/${orderId}`,
+      },
+    });
 
-  // Redirect if cart is empty
-  useEffect(() => {
-    if (!cartLoading && (!cartItems || cartItems.length === 0)) {
+    if (error) {
       toast({
-        title: 'Cart is empty',
-        description: 'Your cart is empty. Please add items before checking out.',
+        title: "Payment Failed",
+        description: error.message,
+        variant: "destructive",
       });
-      setLocation('/cart');
-    }
-  }, [cartItems, cartLoading, setLocation, toast]);
-
-  // Create order mutation
-  const createOrderMutation = useMutation({
-    mutationFn: async (data: CheckoutFormValues) => {
-      // Convert to correct type for API
-      // Make sure to parse string values to integers
-      const shippingId = typeof data.shippingAddressId === 'string' 
-        ? parseInt(data.shippingAddressId) 
-        : data.shippingAddressId;
-      
-      const billingId = typeof data.billingAddressId === 'string' 
-        ? parseInt(data.billingAddressId) 
-        : data.billingAddressId;
-      
-      // Log the data we're sending to help debug
-      console.log("Sending order data:", {
-        shippingAddressId: shippingId,
-        billingAddressId: billingId,
-        notes: data.notes || null // Send null instead of empty string
-      });
-        
-      const response = await apiRequest('POST', '/api/orders', {
-        shippingAddressId: shippingId,
-        billingAddressId: billingId,
-        notes: data.notes || null // Set to null if empty to match schema expectations
-      });
-      
-      // Handle error responses
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Order creation error:', errorData);
-        throw new Error(errorData.message || 'Failed to create order');
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
-      setOrderId(data.id);
-      
-      // Redirect to payment page
-      redirectToPayment(data.id);
-    },
-    onError: () => {
+      setIsProcessing(false);
+    } else {
       toast({
-        title: 'Checkout failed',
-        description: 'There was an error processing your order. Please try again.',
-        variant: 'destructive',
+        title: "Payment Successful",
+        description: "Thank you for your purchase!",
       });
-      setIsLoading(false);
-    }
-  });
-
-  // Redirect to payment page
-  const redirectToPayment = (orderId: number) => {
-    try {
-      setIsLoading(false);
-      setLocation(`/payment/${orderId}`);
-    } catch (error) {
-      toast({
-        title: 'Checkout error',
-        description: 'There was an error processing your order. Please try again later.',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
+      // The redirect will happen automatically due to the return_url
+      // But we'll keep the loading state just in case
     }
   };
 
-  async function onSubmit(values: CheckoutFormValues) {
-    if (!addresses || addresses.length === 0) {
-      toast({
-        title: 'Address required',
-        description: 'Please add a shipping and billing address to continue.',
-        variant: 'destructive',
-      });
-      setLocation('/account/addresses');
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <PaymentElement />
+      <Button 
+        type="submit" 
+        disabled={!stripe || isProcessing} 
+        className="w-full"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          `Pay ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)}`
+        )}
+      </Button>
+    </form>
+  );
+};
+
+export default function Checkout() {
+  const [match, params] = useRoute<{ orderId: string }>('/checkout/:orderId');
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [clientSecret, setClientSecret] = useState("");
+  const [orderDetails, setOrderDetails] = useState<{
+    id: string;
+    amount: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!match) {
+      setLocation('/cart');
       return;
     }
-    
-    try {
-      // Convert string IDs to numbers for API compatibility
-      const payload = {
-        ...values,
-        shippingAddressId: parseInt(values.shippingAddressId as string),
-        billingAddressId: parseInt(values.billingAddressId as string),
-        // Use null for empty notes to match schema expectations
-        notes: values.notes || null
-      };
-      
-      setIsLoading(true);
-      createOrderMutation.mutate(payload);
-    } catch (error) {
-      console.error('Checkout error:', error);
-      toast({
-        title: 'Checkout error',
-        description: 'There was a problem processing your checkout data. Please try again.',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-    }
-  }
 
-  // Calculate totals
-  const subtotal = cartItems?.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) || 0;
-  const shipping = subtotal > 0 ? 10 : 0;
-  const total = subtotal + shipping;
-  
-  // Loading state
-  if (cartLoading || addressesLoading) {
+    const fetchOrderDetails = async () => {
+      try {
+        // Get the order details first
+        const orderResponse = await apiRequest("GET", `/api/orders/${params.orderId}`);
+        const orderData = await orderResponse.json();
+        
+        if (!orderResponse.ok) {
+          throw new Error(orderData.message || 'Failed to fetch order details');
+        }
+        
+        setOrderDetails({
+          id: orderData.id,
+          amount: orderData.total,
+        });
+
+        // Create payment intent with the order amount
+        const paymentResponse = await apiRequest("POST", "/api/create-payment-intent", { 
+          amount: orderData.total,
+          orderId: params.orderId
+        });
+        
+        const paymentData = await paymentResponse.json();
+        
+        if (!paymentResponse.ok) {
+          throw new Error(paymentData.message || 'Failed to create payment intent');
+        }
+        
+        setClientSecret(paymentData.clientSecret);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Something went wrong",
+          variant: "destructive",
+        });
+        setLocation('/cart');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [match, params, setLocation, toast]);
+
+  if (isLoading || !orderDetails) {
     return (
-      <div className="container py-10 flex justify-center">
+      <div className="h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"/>
       </div>
     );
   }
 
+  if (!clientSecret) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Payment Error</CardTitle>
+            <CardDescription>
+              We couldn't initialize the payment process. Please try again later.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={() => setLocation('/cart')} className="w-full">
+              Return to Cart
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="container py-10">
-      <h1 className="text-3xl font-serif font-light tracking-wide text-center mb-8">Checkout</h1>
-      
-      <div className="grid gap-8 md:grid-cols-3">
-        <div className="md:col-span-2">
-          {(!addresses || addresses.length === 0) ? (
-            <div className="text-center py-6 border rounded-md">
-              <p className="text-muted-foreground mb-4">You haven't added any addresses yet</p>
-              <Button asChild>
-                <Link href="/account/addresses">Add Address</Link>
-              </Button>
-            </div>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div>
-                  <h2 className="text-xl font-medium mb-4">Shipping Address</h2>
-                  
-                  <FormField
-                    control={form.control}
-                    name="shippingAddressId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="space-y-3"
-                          >
-                            {addresses.map((address) => (
-                              <div key={address.id} className="flex items-start space-x-3 border p-4 rounded-md">
-                                <RadioGroupItem value={address.id.toString()} id={`shipping-${address.id}`} />
-                                <div>
-                                  <div className="font-medium">
-                                    {address.addressLine1}
-                                  </div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {address.addressLine2 && <>{address.addressLine2}<br /></>}
-                                    {address.city}, {address.state} {address.postalCode}<br />
-                                    {address.country}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div>
-                  <h2 className="text-xl font-medium mb-4">Billing Address</h2>
-                  
-                  <FormField
-                    control={form.control}
-                    name="billingAddressId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="space-y-3"
-                          >
-                            {addresses.map((address) => (
-                              <div key={address.id} className="flex items-start space-x-3 border p-4 rounded-md">
-                                <RadioGroupItem value={address.id.toString()} id={`billing-${address.id}`} />
-                                <div>
-                                  <div className="font-medium">
-                                    {address.addressLine1}
-                                  </div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {address.addressLine2 && <>{address.addressLine2}<br /></>}
-                                    {address.city}, {address.state} {address.postalCode}<br />
-                                    {address.country}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div>
-                  <h2 className="text-xl font-medium mb-4">Order Notes</h2>
-                  
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Special instructions for delivery or gift message" 
-                            className="h-24"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Processing...' : 'Continue to Payment'}
-                </Button>
-              </form>
-            </Form>
-          )}
-        </div>
-        
-        <div>
-          <Card className="p-6">
-            <h2 className="text-xl font-medium mb-4">Order Summary</h2>
-            
-            <div className="space-y-4">
-              {cartItems?.map((item) => (
-                <div key={item.id} className="flex items-center text-sm">
-                  <div className="w-12 h-12 rounded overflow-hidden mr-3 flex-shrink-0">
-                    <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
-                  </div>
-                  
-                  <div className="flex-grow">
-                    <div className="font-medium">{item.product.name}</div>
-                    <div className="text-muted-foreground text-xs">Qty: {item.quantity}</div>
-                  </div>
-                  
-                  <div className="text-right">
-                    ${(item.product.price * item.quantity).toFixed(2)}
-                  </div>
-                </div>
-              ))}
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>${shipping.toFixed(2)}</span>
-                </div>
-                
-                <Separator />
-                
-                <div className="flex justify-between font-medium">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-md mx-auto p-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Complete Your Purchase</CardTitle>
+            <CardDescription>
+              Please provide your payment details to complete the order.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
+              <CheckoutForm amount={orderDetails.amount} orderId={orderDetails.id} />
+            </Elements>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

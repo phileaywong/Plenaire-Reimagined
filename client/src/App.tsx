@@ -87,6 +87,9 @@ function Router() {
           <Route path="/stripe-checkout" component={StripeCheckout} />
           <Route path="/order-confirmation/:orderId" component={OrderConfirmation} />
           <Route path="/account" component={Account} />
+          <Route path="/account/addresses" component={Account} />
+          <Route path="/account/orders" component={Account} />
+          <Route path="/account/wishlist" component={Account} />
           <Route path="/our-story" component={Story} />
           <Route path="/ingredients" component={Ingredients} />
           <Route path="/journal" component={Journal} />
