@@ -28,8 +28,8 @@ const AdminPage = () => {
   }
 
   // Check if user is authenticated and is an admin
-  // Use loose comparison to handle potential string/null/undefined variations
   if (!user) {
+    console.log("Admin page access denied: No user data available");
     toast({
       title: "Access Denied",
       description: "You must be logged in to access the admin area",
@@ -39,7 +39,17 @@ const AdminPage = () => {
     return null;
   }
   
-  if (user.role !== "admin") {
+  // Log the exact user data for debugging
+  console.log("Admin page - User data:", JSON.stringify(user));
+  
+  // Check admin role with string comparison
+  // Ensure we're comparing strings in a consistent manner
+  const userRole = String(user.role || '').toLowerCase();
+  const isAdmin = userRole === 'admin';
+  
+  console.log("Admin role check: Current role =", userRole, "Is admin?", isAdmin);
+  
+  if (!isAdmin) {
     toast({
       title: "Access Denied",
       description: `You don't have administrator privileges. Current role: ${user.role || "none"}`,
@@ -48,6 +58,9 @@ const AdminPage = () => {
     setLocation("/");
     return null;
   }
+  
+  // If we reach here, the user is confirmed as an admin
+  console.log("Admin access granted, displaying admin dashboard");
 
   return <AdminDashboard />;
 };

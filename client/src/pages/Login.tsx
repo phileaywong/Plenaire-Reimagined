@@ -19,8 +19,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const loginSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(1, { message: 'Password is required' }),
+  email: z.string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Please enter a valid email address' }),
+  password: z.string()
+    .min(1, { message: 'Password is required' })
+    .min(8, { message: 'Password must be at least 8 characters' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -42,36 +46,56 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      const response = await apiRequest('POST', '/api/auth/login', values);
+      // Make the API request but get the raw response first
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+        credentials: 'include'
+      });
       
+      // Parse the response as JSON
+      const data = await response.json();
+      
+      // Check if the response is successful
+      if (!response.ok) {
+        // Format an appropriate error message based on the response
+        let errorMessage = data.message || 'Something went wrong. Please try again.';
+        
+        // Log for debugging
+        console.log('Server response:', data);
+        
+        // Show appropriate error message
+        toast({
+          title: 'Login failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        
+        // Exit early
+        return;
+      }
+      
+      // Success case
       toast({
         title: 'Logged in',
         description: 'You have successfully logged in.',
       });
       
-      setLocation('/');
+      // Check if the user is an admin and redirect to admin page if so
+      if (data.role === 'admin') {
+        console.log('Admin user detected, redirecting to admin panel');
+        setLocation('/admin');
+      } else {
+        setLocation('/');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       
-      let errorMessage = 'Invalid email or password. Please try again.';
-      
-      // Try to extract the specific error message from the response
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.response) {
-        try {
-          const errorData = await error.response.json();
-          if (errorData && errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch (e) {
-          // If we can't parse the JSON, fall back to the default message
-        }
-      }
-      
+      // Fallback error message if something completely unexpected happened
       toast({
         title: 'Login failed',
-        description: errorMessage,
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
     } finally {

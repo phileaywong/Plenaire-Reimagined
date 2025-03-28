@@ -106,13 +106,21 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 // Check if user is an admin
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
+    console.log("Admin check failed: No user found in request");
     return res.status(401).json({ message: 'Authentication required' });
   }
   
-  if (req.user.role !== 'admin') {
+  // Debug log
+  console.log(`Admin check for user ${req.user.id}: role = ${req.user.role}`);
+  
+  // Ensure we're comparing correctly - case insensitive string comparison
+  const userRole = String(req.user.role || '').toLowerCase();
+  if (userRole !== 'admin') {
+    console.log(`Admin access denied for user ${req.user.id}: role = ${req.user.role} (normalized: ${userRole})`);
     return res.status(403).json({ message: 'Admin permission required' });
   }
   
+  console.log(`Admin access granted for user ${req.user.id}`);
   next();
 };
 
