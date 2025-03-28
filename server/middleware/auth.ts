@@ -16,6 +16,7 @@ declare global {
       };
       session?: {
         id: string;
+        captchaText?: string;
       };
     }
   }
@@ -52,8 +53,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
               role: user.role || 'user'
             };
             
+            // Convert captchaText to string | undefined (avoiding null)
+            const captchaText = typeof session.captchaText === 'string' ? session.captchaText : undefined;
+            
             req.session = {
-              id: session.id
+              id: session.id,
+              captchaText: captchaText
             };
             
             return next();
@@ -149,8 +154,12 @@ export const authenticateSession = async (req: Request, res: Response, next: Nex
       role: user.role || 'user'
     };
     
+    // Convert captchaText to string | undefined (avoiding null)
+    const captchaText = typeof session.captchaText === 'string' ? session.captchaText : undefined;
+    
     req.session = {
-      id: session.id
+      id: session.id,
+      captchaText: captchaText
     };
     
     next();

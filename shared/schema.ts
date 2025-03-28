@@ -61,6 +61,8 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   phone: text("phone"),
   role: userRoleEnum("role").default('user'),
+  loginAttempts: integer("login_attempts").default(0),
+  lockUntil: timestamp("lock_until"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -160,6 +162,7 @@ export const enquiries = pgTable("enquiries", {
 export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: integer("user_id").references(() => users.id).notNull(),
+  captchaText: text("captcha_text"),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -184,6 +187,7 @@ export const insertUserSchema = createInsertSchema(users)
 export const loginUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+  captcha: z.string().optional(),
 });
 
 export const insertAddressSchema = createInsertSchema(addresses).omit({ id: true, createdAt: true, updatedAt: true });

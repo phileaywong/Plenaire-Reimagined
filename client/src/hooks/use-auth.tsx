@@ -62,11 +62,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthInitialized(true);
   }, []);
 
+  // Define the LoginCredentials type
+  type LoginCredentials = {
+    username: string; 
+    password: string; 
+    captcha?: string;
+  };
+
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { email: string; password: string }) => {
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
+    mutationFn: async (credentials: LoginCredentials) => {
+      // Convert credentials to match the API endpoint's expected format (email vs username)
+      const apiCredentials = {
+        email: credentials.username,
+        password: credentials.password,
+        captcha: credentials.captcha
+      };
+      
+      const res = await apiRequest("POST", "/api/auth/login", apiCredentials);
       if (!res.ok) {
         const errorData = await res.json();
+        // Pass along the requireCaptcha flag if it exists
+        if (errorData.requireCaptcha) {
+          const error = new Error(errorData.message || "Login failed");
+          (error as any).requireCaptcha = true;
+          throw error;
+        }
         throw new Error(errorData.message || "Login failed");
       }
       return await res.json();

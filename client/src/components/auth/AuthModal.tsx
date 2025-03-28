@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -18,11 +18,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 const loginSchema = z.object({
   username: z.string().email({ message: 'Please enter a valid email address' }),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  captcha: z.string().optional(),
 });
 
 const registerSchema = z.object({
@@ -46,14 +48,28 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const { loginMutation, registerMutation } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaValue, setCaptchaValue] = useState<string>('');
+  const [isFetchingCaptcha, setIsFetchingCaptcha] = useState(false);
 
-  // Login form
-  const loginForm = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  // Dynamic login schema based on captcha visibility
+  const currentLoginSchema = useMemo(() => {
+    return showCaptcha 
+      ? loginSchema.extend({ 
+          captcha: z.string().min(1, "Security code is required") 
+        })
+      : loginSchema;
+  }, [showCaptcha]);
+
+  // Login form with dynamic validation
+  const loginForm = useForm<LoginFormData & { captcha?: string }>({
+    resolver: zodResolver(currentLoginSchema),
     defaultValues: {
       username: '',
       password: '',
+      captcha: '',
     },
+    mode: 'onSubmit',
   });
 
   // Register form
@@ -67,18 +83,61 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
       phone: '',
     },
   });
+  
+  // Initialize captcha if needed (e.g., when login page is opened from a failed attempt)
+  useEffect(() => {
+    if (open && activeTab === 'login') {
+      // Check if there's any query param or session store indication that captcha should be shown
+      const shouldShowCaptcha = window.sessionStorage.getItem('showLoginCaptcha') === 'true';
+      if (shouldShowCaptcha) {
+        fetchCaptcha();
+      }
+    }
+  }, [open, activeTab]);
 
-  const onLoginSubmit = async (data: LoginFormData) => {
+  // Function to fetch captcha
+  const fetchCaptcha = async () => {
+    try {
+      setIsFetchingCaptcha(true);
+      const res = await fetch('/api/auth/captcha');
+      const data = await res.json();
+      setCaptchaValue(data.captcha);
+      setShowCaptcha(true);
+    } catch (error) {
+      console.error('Error fetching captcha:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load captcha. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsFetchingCaptcha(false);
+    }
+  };
+
+  const onLoginSubmit = async (data: LoginFormData & { captcha?: string }) => {
     try {
       await loginMutation.mutateAsync(data);
+      // Success! Clear any previous session flags
+      window.sessionStorage.removeItem('showLoginCaptcha');
       toast({
         title: 'Login successful',
         description: 'Welcome back!',
       });
       onOpenChange(false);
       navigate('/account');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      
+      // Check if captcha is required from the backend
+      if ((error as any).requireCaptcha || 
+          (error.message && (error.message.includes('Security code') || 
+                             error.message.includes('attempt'))) && 
+          !showCaptcha) {
+        // Mark in session storage that captcha should be shown on next login attempt
+        window.sessionStorage.setItem('showLoginCaptcha', 'true');
+        fetchCaptcha();
+      }
       // Error handling is done in the mutation itself
     }
   };
@@ -98,8 +157,20 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
     }
   };
 
+  // Handle dialog closing
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      // Reset form states when closing the dialog
+      loginForm.reset();
+      registerForm.reset();
+      setShowCaptcha(false);
+      setCaptchaValue('');
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-serif tracking-wider">
@@ -154,6 +225,46 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
                     </FormItem>
                   )}
                 />
+
+                {showCaptcha && (
+                  <div className="space-y-3">
+                    <FormField
+                      control={loginForm.control}
+                      name="captcha"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Security Code</FormLabel>
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-gray-100 p-2 rounded text-lg font-mono">
+                                {isFetchingCaptcha ? 'Loading...' : captchaValue}
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="icon" 
+                                onClick={fetchCaptcha}
+                                disabled={isFetchingCaptcha}
+                              >
+                                <RefreshCw className={`h-4 w-4 ${isFetchingCaptcha ? 'animate-spin' : ''}`} />
+                              </Button>
+                            </div>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter the code above" 
+                                {...field} 
+                              />
+                            </FormControl>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      For your security, please enter the code shown above.
+                    </p>
+                  </div>
+                )}
 
                 <Button 
                   type="submit" 

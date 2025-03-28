@@ -18,6 +18,15 @@ import { ZodError } from "zod";
 import { authenticate, requireAuth, requireAdmin } from "./middleware/auth";
 import { comparePassword, hashPassword } from "./utils/password";
 import Stripe from "stripe";
+
+// Define custom session interface
+declare global {
+  namespace Express {
+    interface Session {
+      captchaText?: string;
+    }
+  }
+}
 import cookieParser from "cookie-parser";
 
 // Initialize Stripe with secret key if available
@@ -59,10 +68,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create session
       const session = await storage.createSession(user.id);
       
-      // Set session cookie
+      // Set session cookie - expires when browser is closed (no maxAge)
       res.cookie("sessionId", session.id, {
         httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         sameSite: "strict",
         secure: process.env.NODE_ENV === "production"
       });
@@ -85,25 +93,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = loginUserSchema.parse(req.body);
       
+      // Verify captcha if provided (simple implementation)
+      if (data.captcha) {
+        // Simple captcha validation (in a real app, would use a more sophisticated approach)
+        const expectedCaptcha = req.session?.captchaText;
+        if (!expectedCaptcha || data.captcha !== expectedCaptcha) {
+          return res.status(400).json({ 
+            message: "Incorrect security code. Please try again.",
+            requireCaptcha: true 
+          });
+        }
+        
+        // Clear the captcha from session after verification
+        if (req.session) {
+          req.session.captchaText = undefined;
+        }
+      }
+      
       // Get user by email
       const user = await storage.getUserByEmail(data.email);
+      
+      // Check if captcha is required but not provided
+      if (user && user.loginAttempts && user.loginAttempts >= 3 && !data.captcha) {
+        return res.status(400).json({ 
+          message: "Security code is required for this account.",
+          requireCaptcha: true 
+        });
+      }
       if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res.status(401).json({ message: "User not found. Please check your email address." });
+      }
+      
+      // Check for account lockout
+      const now = new Date();
+      if (user.lockUntil && user.lockUntil > now) {
+        const minutesLeft = Math.ceil((user.lockUntil.getTime() - now.getTime()) / (60 * 1000));
+        return res.status(401).json({ 
+          message: `Account temporarily locked. Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.` 
+        });
       }
       
       // Check password
       const passwordMatch = await comparePassword(data.password, user.password);
       if (!passwordMatch) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        // Increment login attempts
+        const loginAttempts = (user.loginAttempts || 0) + 1;
+        const updateData: any = { loginAttempts };
+        
+        // If 5 or more attempts, lock the account for 30 minutes
+        if (loginAttempts >= 5) {
+          const lockUntil = new Date();
+          lockUntil.setMinutes(lockUntil.getMinutes() + 30);
+          updateData.lockUntil = lockUntil;
+        }
+        
+        await storage.updateUser(user.id, updateData);
+        
+        return res.status(401).json({ 
+          message: `Incorrect password. ${5 - loginAttempts} attempt${loginAttempts !== 4 ? 's' : ''} remaining.`,
+          requireCaptcha: loginAttempts >= 3
+        });
+      }
+      
+      // Reset login attempts on successful login
+      if (user.loginAttempts > 0 || user.lockUntil) {
+        await storage.updateUser(user.id, {
+          loginAttempts: 0,
+          lockUntil: null
+        });
       }
       
       // Create session
       const session = await storage.createSession(user.id);
       
-      // Set session cookie
+      // Set session cookie - expires when browser is closed (no maxAge)
       res.cookie("sessionId", session.id, {
         httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         sameSite: "strict",
         secure: process.env.NODE_ENV === "production"
       });
@@ -116,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Invalid input", errors: error.errors });
       } else {
         console.error("Login error:", error);
-        res.status(500).json({ message: "Login failed" });
+        res.status(500).json({ message: "Login failed due to a server error. Please try again later." });
       }
     }
   });
@@ -136,6 +201,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Logout error:", error);
       res.status(500).json({ message: "Logout failed" });
+    }
+  });
+  
+  // We already have the session interface declared at the top of the file
+
+  // Generate simple captcha for login attempts
+  app.get("/api/auth/captcha", async (req: Request, res: Response) => {
+    try {
+      // Generate a random 6-digit number for simplicity
+      const captchaText = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Store the captcha text in the session for later verification
+      if (req.session) {
+        req.session.captchaText = captchaText;
+      }
+      
+      // Return the captcha text for display
+      res.json({ captcha: captchaText });
+    } catch (error) {
+      console.error("Captcha generation error:", error);
+      res.status(500).json({ message: "Failed to generate captcha" });
     }
   });
   
