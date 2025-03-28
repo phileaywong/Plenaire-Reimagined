@@ -23,16 +23,25 @@ import { apiRequest } from '@/lib/queryClient';
 
 const loginSchema = z.object({
   username: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   captcha: z.string().optional(),
 });
 
 const registerSchema = z.object({
-  username: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Must contain at least one special character'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   phone: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -76,12 +85,14 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: '',
+      email: '',
       password: '',
+      confirmPassword: '',
       firstName: '',
       lastName: '',
-      phone: '',
+      phone: ''
     },
+    mode: "onChange"
   });
   
   // Initialize captcha if needed (e.g., when login page is opened from a failed attempt)
@@ -331,7 +342,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
                 <FormField
                   control={registerForm.control}
-                  name="username"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
@@ -356,6 +367,24 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
                       <FormControl>
                         <Input 
                           placeholder="Create a password" 
+                          type="password" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={registerForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Confirm your password" 
                           type="password" 
                           {...field} 
                         />

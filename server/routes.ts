@@ -51,46 +51,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register a new user
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      console.log("Registration request received:", {
+      // Clear log format that will help us debug the registration issue
+      const requestBody = {
         email: req.body.email,
         firstName: req.body.firstName,
         lastName: req.body.lastName,
-        hasPassword: !!req.body.password,
+        passwordProvided: !!req.body.password,
         passwordLength: req.body.password?.length,
-        hasConfirmPassword: !!req.body.confirmPassword,
+        confirmPasswordProvided: !!req.body.confirmPassword,
         passwordsMatch: req.body.password === req.body.confirmPassword
-      });
+      };
+      
+      console.log("====== REGISTRATION REQUEST RECEIVED =======");
+      console.log(JSON.stringify(requestBody, null, 2));
+      console.log("===========================================");
+      
+      // Simply create these fields if they're not already provided
+      // This will make sure firstName, lastName, and phone are at least empty strings
+      const formData = {
+        ...req.body,
+        firstName: req.body.firstName || '',
+        lastName: req.body.lastName || '',
+        phone: req.body.phone || ''
+      };
       
       // Validate the input data using the enhanced schema
-      const validationResult = insertUserSchema.safeParse(req.body);
+      const validationResult = insertUserSchema.safeParse(formData);
       
       // If validation fails, provide detailed error messages
       if (!validationResult.success) {
         const errors = validationResult.error.format();
-        console.log("Registration validation failed:", JSON.stringify(errors, null, 2));
+        
+        console.log("====== REGISTRATION VALIDATION FAILED =======");
+        console.log(JSON.stringify(errors, null, 2));
+        console.log("=============================================");
         
         // Determine the most important validation error to show
-        let primaryErrorMessage = "Invalid input data";
+        let primaryErrorMessage = "Please check your form inputs";
         let allErrorMessages: string[] = [];
         
-        // Collect all error messages for better debugging
+        // Process password errors first as they're most common
+        if (errors.password?._errors?.length) {
+          primaryErrorMessage = errors.password._errors[0];
+          allErrorMessages.push(`Password: ${errors.password._errors.join(', ')}`);
+        }
+        else if (errors.confirmPassword?._errors?.length) {
+          primaryErrorMessage = errors.confirmPassword._errors[0];
+          allErrorMessages.push(`Confirm Password: ${errors.confirmPassword._errors.join(', ')}`);
+        }
+        else if (errors.email?._errors?.length) {
+          primaryErrorMessage = errors.email._errors[0];
+          allErrorMessages.push(`Email: ${errors.email._errors.join(', ')}`);
+        }
+        else if (errors.firstName?._errors?.length) {
+          primaryErrorMessage = errors.firstName._errors[0]; 
+          allErrorMessages.push(`First Name: ${errors.firstName._errors.join(', ')}`);
+        }
+        else if (errors.lastName?._errors?.length) {
+          primaryErrorMessage = errors.lastName._errors[0];
+          allErrorMessages.push(`Last Name: ${errors.lastName._errors.join(', ')}`);
+        }
+        
+        // Collect all other error messages
         Object.entries(errors).forEach(([field, error]) => {
-          if (field !== '_errors' && error?._errors?.length) {
+          if (field !== '_errors' && 
+              typeof error === 'object' && 
+              error !== null && 
+              '_errors' in error && 
+              Array.isArray(error._errors) && 
+              error._errors.length && 
+              !allErrorMessages.some(msg => msg.startsWith(field))) {
             allErrorMessages.push(`${field}: ${error._errors.join(', ')}`);
-            
-            // Update primary message based on priority
-            if (field === 'email' && !primaryErrorMessage.includes('email')) {
-              primaryErrorMessage = error._errors[0];
-            } 
-            else if (field === 'password' && !primaryErrorMessage.includes('password')) {
-              primaryErrorMessage = error._errors[0];
-            } 
-            else if (field === 'confirmPassword' && primaryErrorMessage === "Invalid input data") {
-              primaryErrorMessage = error._errors[0];
-            }
-            else if (primaryErrorMessage === "Invalid input data") {
-              primaryErrorMessage = error._errors[0];
-            }
           }
         });
         

@@ -27,40 +27,39 @@ const AdminPage = () => {
       description: "You must be logged in to access the admin area",
       variant: "destructive",
     });
-    setLocation("/");
+    setLocation("/login");
     return null;
   }
   
-  // Log the exact user data for debugging
-  console.log("Admin page access - User data:", {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    isAdmin
-  });
+  // Log the FULL user object exactly as received
+  console.log("=== ADMIN PAGE - RECEIVED USER OBJECT ===");
+  console.log(JSON.stringify(user, null, 2));
+  console.log("=== END USER OBJECT ===");
   
-  // Enhanced admin access check with fallback methods
-  const hasAdminAccess = isAdmin || 
-                         user.role === 'admin' || 
-                         user.email === 'admin@localhost.localdomain';
+  // Most reliable check: we'll JUST use the isAdmin value from the hook
+  // Since we've improved the hook logic, this should be the most robust option
+  console.log("ADMIN ACCESS - Using hook's isAdmin value:", isAdmin);
   
-  // Detailed logging of access check
-  console.log("Admin access check details:", {
-    isAdminFromHook: isAdmin,
-    roleDirectCheck: user.role === 'admin',
-    normalizedRoleCheck: String(user.role || '').toLowerCase() === 'admin',
-    knownAdminEmail: user.email === 'admin@localhost.localdomain',
-    finalDecision: hasAdminAccess
-  });
-  
-  // Check for admin access
-  if (!hasAdminAccess) {
+  // Check for admin access - simpler approach relying on the hook
+  if (!isAdmin) {
+    // Alert the user that they don't have access
     console.log("Admin page access denied: Not an admin");
+    
+    // Detailed logging for troubleshooting
+    console.log("Admin check failed:", {
+      email: user.email,
+      role: user.role,
+      roleType: typeof user.role,
+      isKnownAdmin: user.email === 'admin@localhost.localdomain',
+    });
+    
     toast({
       title: "Access Denied",
-      description: `You don't have administrator privileges. Current role: ${user.role || "none"}`,
+      description: `You don't have administrator privileges. If you believe this is an error, please contact support.`,
       variant: "destructive",
     });
+    
+    // Redirect to home page
     setLocation("/");
     return null;
   }

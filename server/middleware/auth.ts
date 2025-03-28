@@ -142,18 +142,45 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 const isUserAdmin = (user: any): boolean => {
   if (!user) return false;
   
-  // Handle different data formats gracefully
-  // 1. Try direct string comparison first (most common case)
-  if (user.role === 'admin') return true;
+  console.log('SERVER - isUserAdmin check - Raw user data:', {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    roleType: typeof user.role,
+    roleStringified: JSON.stringify(user.role)
+  });
   
-  // 2. Case-insensitive comparison as fallback
-  const normalizedRole = String(user.role || '').toLowerCase().trim();
-  if (normalizedRole === 'admin') return true;
+  // First check: Known admin email (most reliable)
+  const isKnownAdmin = user.email === 'admin@localhost.localdomain';
+  if (isKnownAdmin) {
+    console.log('SERVER - Admin check: Email matches known admin');
+    return true;
+  }
   
-  // 3. Special case for known admin email
-  if (user.email === 'admin@localhost.localdomain') return true;
+  // Second check: Direct role comparison with multiple admin values
+  const adminValues = ['admin', 'ADMIN', 'Admin', '1', 1];
+  if (adminValues.includes(user.role)) {
+    console.log('SERVER - Admin check: Direct role match');
+    return true;
+  }
+  
+  // Third check: Case-insensitive string comparison
+  if (typeof user.role === 'string') {
+    const normalizedRole = user.role.toLowerCase().trim();
+    if (normalizedRole === 'admin') {
+      console.log('SERVER - Admin check: Normalized role match');
+      return true;
+    }
+  }
+  
+  // Last check: Special handling for numeric role if stored as number
+  if (user.role === 1 || user.role === '1') {
+    console.log('SERVER - Admin check: Numeric role match');
+    return true;
+  }
   
   // Not an admin by any check
+  console.log('SERVER - Admin check: All checks failed, not an admin');
   return false;
 };
 

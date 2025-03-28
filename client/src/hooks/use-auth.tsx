@@ -141,11 +141,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: any) => {
-      const res = await apiRequest("POST", "/api/auth/register", userData);
+      // Map frontend field names to match what the API expects
+      const apiData = {
+        email: userData.email || userData.username, // Support both email and username fields
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        password: userData.password,
+        confirmPassword: userData.confirmPassword,
+        phone: userData.phone || '',
+      };
+      
+      console.log("Registration attempt with data:", {
+        ...apiData,
+        password: apiData.password ? "******" : undefined,
+        confirmPassword: apiData.confirmPassword ? "******" : undefined
+      });
+      
+      const res = await apiRequest("POST", "/api/auth/register", apiData);
+      
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Registration failed");
+        let errorMessage = "Registration failed";
+        try {
+          const errorData = await res.json();
+          console.log("Registration error data:", errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error("Error parsing registration error response:", parseError);
+        }
+        throw new Error(errorMessage);
       }
+      
       return await res.json();
     },
     onSuccess: () => {
@@ -157,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Registration error in mutation:", error);
       toast({
         title: "Registration failed",
         description: error.message,
@@ -189,53 +215,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Enhanced admin status checking with better debug logging and multiple fallback strategies
+  // Even more robust admin status checking with better debug logging
   const checkIsAdmin = () => {
     if (!user) return false;
     
-    // 1. Early return for known admin email 
-    const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
-    if (isKnownAdminEmail) {
-      console.log("Admin check: Recognized admin email");
-      return true;
-    }
+    // CRITICAL: Log full user object for debugging
+    console.log("AUTH HOOK - Full user object for admin detection:", JSON.stringify(user, null, 2));
     
-    // 2. Direct role check for 'admin' string value (most common case)
-    const exactMatch = user.role === 'admin';
-    if (exactMatch) {
-      console.log("Admin check: Exact role match");
-      return true;
+    // 1. Early return for known admin email (most reliable check)
+    const isKnownAdminEmail = user.email === 'admin@localhost.localdomain';
+    
+    // 2. Direct role check - handle various formats
+    const adminValues = ['admin', 'ADMIN', 'Admin', '1'];
+    const rawRole = user.role;
+    
+    // Handle string comparison
+    let exactMatch = false;
+    if (typeof rawRole === 'string') {
+      exactMatch = adminValues.includes(rawRole);
     }
     
     // 3. Case-insensitive role check for more resilience
-    // Handle null, undefined, or non-string values safely
     let normalizedRole = '';
-    if (user.role !== null && user.role !== undefined) {
-      normalizedRole = String(user.role).toLowerCase().trim();
+    if (rawRole !== null && rawRole !== undefined) {
+      normalizedRole = String(rawRole).toLowerCase().trim();
     }
-    
     const normalizedMatch = normalizedRole === 'admin';
-    if (normalizedMatch) {
-      console.log("Admin check: Case-insensitive role match");
-      return true;
-    }
     
-    // 4. Additional check - numeric role value (in case role is stored as a number)
-    const numericMatch = user.role === 1 || user.role === '1';
-    if (numericMatch) {
-      console.log("Admin check: Numeric role match");
-      return true;
-    }
+    // 4. Numeric role check
+    const numericMatch = rawRole === 1 || rawRole === '1';
     
-    // Combined result logging
+    // Combine all strategies
     const isAdmin = exactMatch || normalizedMatch || isKnownAdminEmail || numericMatch;
     
     // Detailed debug logging
-    console.log("Auth hook - Admin check:", { 
+    console.log("AUTH HOOK - Admin check details:", { 
       userId: user.id,
       email: user.email,
-      rawRole: user.role,
-      roleType: typeof user.role,
+      rawRole: rawRole,
+      roleTypeOf: typeof rawRole,
+      roleStringified: String(rawRole),
       normalizedRole,
       exactMatch,
       normalizedMatch,

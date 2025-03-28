@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,36 +38,26 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
 
-  // Create a more detailed schema for the form with error messages
-  const formSchema = insertUserSchema
-    .superRefine((data, ctx) => {
-      // Enhance client-side validation with better error messages
-      if (!data.email) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Email is required",
-          path: ["email"]
-        });
-      }
-      
-      if (!data.firstName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "First name is required",
-          path: ["firstName"]
-        });
-      }
-      
-      if (!data.lastName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Last name is required",
-          path: ["lastName"]
-        });
-      }
-      
-      // Password validation is already handled by the schema
-    });
+  // Create a simpler local schema for the form that extends the server schema
+  const formSchema = z.object({
+    email: z.string().email("Valid email is required"),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    password: z.string()
+      .min(8, "Password must be at least 8 characters long")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    phone: z.string().optional(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+  // For debugging form errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(formSchema),
@@ -77,11 +67,22 @@ export default function Register() {
       lastName: '',
       password: '',
       confirmPassword: '',
-      phone: '', // Initialize with empty string, not null
+      phone: '', 
     },
-    // Debugging for form errors
     mode: "onChange"
   });
+  
+  // Debug form errors
+  useEffect(() => {
+    console.log("Form errors:", form.formState.errors);
+    const errors: Record<string, string> = {};
+    Object.entries(form.formState.errors).forEach(([key, value]) => {
+      if (value?.message) {
+        errors[key] = value.message;
+      }
+    });
+    setFormErrors(errors);
+  }, [form.formState.errors]);
 
   async function onSubmit(values: RegisterFormValues) {
     setIsLoading(true);
