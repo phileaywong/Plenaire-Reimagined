@@ -12,7 +12,12 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertOrderItemSchema,
-  insertEnquirySchema
+  insertEnquirySchema,
+  // Import update schemas
+  updateProductSchema,
+  updateCategorySchema,
+  updateOrderStatusSchema,
+  updatePasswordSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { authenticate, requireAuth, requireAdmin } from "./middleware/auth";
@@ -496,13 +501,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user password
   app.put("/api/auth/password", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { currentPassword, newPassword } = req.body;
-      
-      // Validate inputs
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: "Current password and new password are required" });
+      // Validate input using the new schema
+      const validationResult = updatePasswordSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        // Use the first error message for simplicity, or format all errors
+        const errorMessage = validationResult.error.errors[0]?.message || "Invalid input";
+        return res.status(400).json({ message: errorMessage, errors: validationResult.error.format() });
       }
-      
+      const { currentPassword, newPassword } = validationResult.data;
+
       // Get user
       const user = await storage.getUserById(req.user!.id);
       if (!user) {
@@ -1243,9 +1250,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create product (admin only)
   app.post("/api/admin/products", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const product = await storage.createProduct(req.body);
+      // Validate input using insertProductSchema
+      const validatedData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(validatedData);
       res.status(201).json(product);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid product data", errors: error.format() });
+      }
       console.error("Create product error:", error);
       res.status(500).json({ message: "Failed to create product" });
     }
@@ -1259,13 +1271,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid product ID" });
       }
       
-      const product = await storage.updateProduct(id, req.body);
+      // Validate input using updateProductSchema
+      const validationResult = updateProductSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid product data", errors: validationResult.error.format() });
+      }
+      const validatedData = validationResult.data;
+      
+      const product = await storage.updateProduct(id, validatedData);
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
       
       res.json(product);
     } catch (error) {
+      // ZodError is handled by safeParse, but keep general error handling
       console.error("Update product error:", error);
       res.status(500).json({ message: "Failed to update product" });
     }
@@ -1301,9 +1321,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create category (admin only)
   app.post("/api/admin/categories", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const category = await storage.createCategory(req.body);
+      // Validate input using insertCategorySchema
+      const validatedData = insertCategorySchema.parse(req.body);
+      const category = await storage.createCategory(validatedData);
       res.status(201).json(category);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid category data", errors: error.format() });
+      }
       console.error("Create category error:", error);
       res.status(500).json({ message: "Failed to create category" });
     }
@@ -1317,13 +1342,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid category ID" });
       }
       
-      const category = await storage.updateCategory(id, req.body);
+      // Validate input using updateCategorySchema
+      const validationResult = updateCategorySchema.safeParse(req.body);
+       if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid category data", errors: validationResult.error.format() });
+      }
+      const validatedData = validationResult.data;
+      
+      const category = await storage.updateCategory(id, validatedData);
       if (!category) {
         return res.status(404).json({ message: "Category not found" });
       }
       
       res.json(category);
     } catch (error) {
+      // ZodError is handled by safeParse, but keep general error handling
       console.error("Update category error:", error);
       res.status(500).json({ message: "Failed to update category" });
     }
@@ -1364,10 +1397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid order ID" });
       }
       
-      const { status } = req.body;
-      if (!status || !["pending", "processing", "shipped", "delivered", "cancelled"].includes(status)) {
-        return res.status(400).json({ message: "Invalid status value" });
+      // Validate input using updateOrderStatusSchema
+      const validationResult = updateOrderStatusSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid status data", errors: validationResult.error.format() });
       }
+      const { status } = validationResult.data;
       
       const order = await storage.updateOrderStatus(id, status);
       if (!order) {
@@ -1376,6 +1411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(order);
     } catch (error) {
+      // ZodError is handled by safeParse, but keep general error handling
       console.error("Update order status error:", error);
       res.status(500).json({ message: "Failed to update order status" });
     }

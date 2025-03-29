@@ -1,4 +1,10 @@
 
+# DEPRECATION NOTICE:
+# This script provides the raw SQL for initial schema creation or reference.
+# For ongoing schema management and migrations, please use the Drizzle ORM
+# schema defined in `shared/schema.ts` and the Drizzle Kit CLI commands
+# (e.g., `npm run db:push` or `npx drizzle-kit generate` + `npx drizzle-kit migrate`).
+
 import psycopg2
 import os
 from dotenv import load_dotenv

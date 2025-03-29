@@ -206,6 +206,27 @@ export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, cre
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true, orderId: true, createdAt: true });
 export const insertEnquirySchema = createInsertSchema(enquiries).omit({ id: true, isResolved: true, createdAt: true });
 
+// Update Schemas
+export const updateProductSchema = insertProductSchema.partial();
+export const updateCategorySchema = insertCategorySchema.partial();
+export const updateOrderStatusSchema = z.object({
+  status: orderStatusEnum,
+});
+export const updatePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string() // Re-apply complexity rules from insertUserSchema
+    .min(8, "New password must be at least 8 characters long")
+    .regex(/[A-Z]/, "New password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "New password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "New password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "New password must contain at least one special character"),
+  confirmNewPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: "New passwords don't match",
+  path: ["confirmNewPassword"],
+});
+
+
 // Types
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categories.$inferSelect;
